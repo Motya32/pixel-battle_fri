@@ -294,7 +294,6 @@
         body.light .profile-panel { background: rgba(230,240,255,0.98); }
         body.light .profile-bio-edit { background: #d0d8e8; color: #1a1a2e; }
         
-        /* Рамка для окна профиля — только рамка, не влияет на позиционирование кнопки */
         .profile-panel.border-gold { border: 3px solid #ffd700; }
         .profile-panel.border-neon { border: 3px solid #00ff88; box-shadow: 0 0 10px #00ff88; }
         .profile-panel.border-acid { border: 3px solid #ccff00; box-shadow: 0 0 10px #ccff00; }
@@ -1177,37 +1176,37 @@
         });
         
         // Кнопки сохранения в режиме редактирования
-document.querySelectorAll('.save-btn').forEach(btn => {
-    btn.onclick = async (e) => {
-        const login = btn.dataset.login;
-        const gradient = document.querySelector(`.edit-gradient[data-login="${login}"]`).value;
-        const emoji = document.querySelector(`.edit-emoji[data-login="${login}"]`).value;
-        const bg = document.querySelector(`.edit-bg[data-login="${login}"]`).value;
-        const border = document.querySelector(`.edit-border[data-login="${login}"]`).value;
-        const rainbowBtn = document.querySelector(`.edit-rainbow[data-login="${login}"]`);
-        const rainbow = rainbowBtn.classList.contains('active');
+        document.querySelectorAll('.save-btn').forEach(btn => {
+            btn.onclick = async (e) => {
+                const login = btn.dataset.login;
+                const gradient = document.querySelector(`.edit-gradient[data-login="${login}"]`).value;
+                const emoji = document.querySelector(`.edit-emoji[data-login="${login}"]`).value;
+                const bg = document.querySelector(`.edit-bg[data-login="${login}"]`).value;
+                const border = document.querySelector(`.edit-border[data-login="${login}"]`).value;
+                const rainbowBtn = document.querySelector(`.edit-rainbow[data-login="${login}"]`);
+                const rainbow = rainbowBtn.classList.contains('active');
+                
+                const styleData = {};
+                if(gradient !== 'None') styleData.gradient = gradient;
+                if(emoji !== 'None') styleData.emoji = emoji;
+                if(bg !== 'None') styleData.bg = bg;
+                if(border !== 'None') styleData.border = border;
+                styleData.rainbow = rainbow;
+                
+                await savePlayerStyle(login, styleData);
+                editModeForPlayer = null;
+                await updateStylePanel();
+                updateTopList();
+            };
+        });
         
-        const styleData = {};
-        if(gradient !== 'None') styleData.gradient = gradient;
-        if(emoji !== 'None') styleData.emoji = emoji;
-        if(bg !== 'None') styleData.bg = bg;
-        if(border !== 'None') styleData.border = border;
-        styleData.rainbow = rainbow;
-        
-        await savePlayerStyle(login, styleData);
-        editModeForPlayer = null;
-        await updateStylePanel();  // Обновляем панель
-        updateTopList();           // Обновляем топ
-    };
-});
-
-// Кнопки отмены
-document.querySelectorAll('.cancel-btn-style').forEach(btn => {
-    btn.onclick = async (e) => {
-        editModeForPlayer = null;
-        await updateStylePanel();  // Просто закрываем режим редактирования
-    };
-});
+        // Кнопки отмены в режиме редактирования
+        document.querySelectorAll('.cancel-btn-style').forEach(btn => {
+            btn.onclick = async (e) => {
+                editModeForPlayer = null;
+                await updateStylePanel();
+            };
+        });
         
         // Кнопки бана/разбана/удаления
         document.querySelectorAll('.ban-btn').forEach(btn => {
@@ -1672,15 +1671,6 @@ document.querySelectorAll('.cancel-btn-style').forEach(btn => {
     
     function handlePixelClick(gridX, gridY) {
         if(gridX < 0 || gridX >= GRID_W || gridY < 0 || gridY >= GRID_H) return;
-        
-        // ========== ПРОВЕРКА ПАУЗЫ (ИСПРАВЛЕНО) ==========
-        if(isGamePaused && !isAdminMode) {
-            playSound(440, true);
-            showTempMessage('⏸️ Игра на паузе!', true);
-            return;
-        }
-        // ============================================
-        
         if(pipetteMode) {
             currentColor = pixels[gridY][gridX];
             document.getElementById('colorPicker').value = currentColor;
