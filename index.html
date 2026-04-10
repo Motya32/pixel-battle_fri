@@ -97,10 +97,27 @@
         .style-player {
             padding: 12px;
             border-bottom: 1px solid rgba(255,255,255,0.1);
-            margin-bottom: 10px;
+            margin-bottom: 8px;
         }
         .style-player:last-child { border-bottom: none; margin-bottom: 0; }
-        .style-player-name { font-weight: bold; color: #ffaa88; margin-bottom: 8px; font-size: 0.85rem; }
+        .style-player-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            padding: 5px;
+            border-radius: 10px;
+        }
+        .style-player-header:hover { background: rgba(255,255,255,0.05); }
+        .style-player-name { font-weight: bold; color: #ffaa88; font-size: 0.85rem; }
+        .style-toggle { background: none; border: none; color: #ffaa88; font-size: 0.8rem; cursor: pointer; padding: 0 5px; box-shadow: none; }
+        .style-player-content {
+            display: none;
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid rgba(255,255,255,0.1);
+        }
+        .style-player-content.show { display: block; }
         .style-row { display: flex; align-items: center; gap: 10px; margin-top: 8px; flex-wrap: wrap; }
         .style-select {
             background: #2a2f3a;
@@ -137,7 +154,7 @@
             position: fixed;
             bottom: 160px;
             left: 15px;
-            width: 300px;
+            width: 320px;
             max-height: 400px;
             background: rgba(10,15,25,0.95);
             backdrop-filter: blur(12px);
@@ -175,53 +192,8 @@
         .top-item:last-child { border-bottom: none; margin-bottom: 0; }
         .top-item:hover { background: rgba(255,255,255,0.05); }
         .top-rank { color: #ffaa44; font-weight: bold; width: 35px; }
-        .top-name-wrapper { flex: 1; display: flex; align-items: center; gap: 5px; }
+        .top-name-wrapper { display: inline-flex; align-items: center; gap: 5px; border-radius: 20px; padding: 2px 8px; }
         .top-pixels { color: #88ffaa; }
-        body.light .top-name { color: #1a1a2e; }
-        
-        /* Рамка с эффектом бегущей линии */
-        .glow-border {
-            position: relative;
-            border-radius: 16px;
-            overflow: hidden;
-        }
-        .glow-border::before {
-            content: '';
-            position: absolute;
-            top: -2px;
-            left: -2px;
-            right: -2px;
-            bottom: -2px;
-            border-radius: 18px;
-            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.8), transparent);
-            background-size: 200% 100%;
-            animation: shine 3s linear infinite;
-            pointer-events: none;
-            z-index: 1;
-        }
-        @keyframes shine {
-            0% { background-position: 100% 0; }
-            100% { background-position: -100% 0; }
-        }
-        
-        /* Рамка с цветом */
-        .border-gold { border: 2px solid #ffd700; border-radius: 16px; padding: 8px 12px; }
-        .border-neon { border: 2px solid #00ff88; border-radius: 16px; padding: 8px 12px; box-shadow: 0 0 5px #00ff88; }
-        .border-acid { border: 2px solid #ccff00; border-radius: 16px; padding: 8px 12px; box-shadow: 0 0 5px #ccff00; }
-        .border-ocean { border: 2px solid #44aaff; border-radius: 16px; padding: 8px 12px; }
-        .border-forest { border: 2px solid #228b22; border-radius: 16px; padding: 8px 12px; }
-        .border-rainbow { 
-            border: 2px solid transparent;
-            border-radius: 16px;
-            padding: 8px 12px;
-            background: linear-gradient(white, white) padding-box,
-                        linear-gradient(90deg, red, orange, yellow, green, blue, indigo, violet) border-box;
-            animation: border-rotate 3s linear infinite;
-        }
-        @keyframes border-rotate {
-            0% { filter: hue-rotate(0deg); }
-            100% { filter: hue-rotate(360deg); }
-        }
         
         .chat-panel {
             position: fixed;
@@ -254,15 +226,13 @@
         .chat-messages { height: 250px; overflow-y: auto; padding: 10px; font-size: 0.75rem; display: flex; flex-direction: column; gap: 5px; }
         .chat-message { word-wrap: break-word; padding: 4px 8px; background: rgba(255,255,255,0.05); border-radius: 10px; color: #ffffff; cursor: pointer; }
         .chat-message:hover { background: rgba(255,255,255,0.1); }
-        .chat-name { color: #ffffff; }
+        .chat-error-message { color: #ff8888; font-size: 0.7rem; text-align: center; padding: 4px; opacity: 0; transition: opacity 0.3s; }
         .chat-input-area { display: flex; padding: 10px; gap: 8px; border-top: 1px solid rgba(255,255,255,0.1); }
         .chat-input { flex: 1; background: #2a2f3a; border: none; padding: 8px 12px; border-radius: 20px; color: white; font-family: monospace; font-size: 0.75rem; outline: none; maxlength: 100; }
         .chat-send { background: #2c3e2f; padding: 6px 12px; font-size: 0.7rem; box-shadow: 0 2px 0 #0f2a0f; }
         body.light .chat-panel { background: rgba(230,240,255,0.95); }
         body.light .chat-message { background: rgba(0,0,0,0.05); color: #1a1a2e; }
-        body.light .chat-name { color: #1a1a2e; }
         
-        /* Панель профиля */
         .profile-panel {
             position: fixed;
             top: 50%;
@@ -289,12 +259,7 @@
             color: #ffaa44;
         }
         .profile-close { background: none; border: none; color: #ffaa44; font-size: 1.2rem; cursor: pointer; padding: 0 5px; box-shadow: none; }
-        .profile-content {
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-        }
+        .profile-content { padding: 20px; display: flex; flex-direction: column; gap: 12px; }
         .profile-rank { color: #ffaa44; font-size: 0.8rem; margin-bottom: 5px; }
         .profile-name { font-size: 1.2rem; font-weight: bold; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
         .profile-pixels { color: #88ffaa; font-size: 0.9rem; }
@@ -305,7 +270,9 @@
             border-radius: 12px;
             font-size: 0.8rem;
             word-wrap: break-word;
+            color: #ffffff;
         }
+        body.light .profile-bio { color: #1a1a2e; background: rgba(0,0,0,0.05); }
         .profile-bio-edit {
             width: 100%;
             background: #2a2f3a;
@@ -318,14 +285,9 @@
             resize: vertical;
             outline: none;
         }
-        .profile-edit-btn {
-            background: #4a6a4f;
-            padding: 6px 12px;
-            font-size: 0.7rem;
-            align-self: flex-start;
-        }
+        .profile-edit-btn { background: #4a6a4f; padding: 6px 12px; font-size: 0.7rem; align-self: flex-start; }
+        .profile-cooldown { color: #ffaa88; font-size: 0.7rem; margin-top: 5px; }
         body.light .profile-panel { background: rgba(230,240,255,0.98); }
-        body.light .profile-bio { background: rgba(0,0,0,0.05); color: #1a1a2e; }
         body.light .profile-bio-edit { background: #d0d8e8; color: #1a1a2e; }
         
         .user-panel { position: fixed; top: 15px; right: 15px; display: flex; flex-direction: column; align-items: flex-end; gap: 10px; z-index: 1001; }
@@ -374,7 +336,6 @@
         .toggle-password { position: absolute; right: 12px; cursor: pointer; font-size: 1.2rem; background: none; border: none; box-shadow: none; padding: 0; color: #ffaa88; }
         .auth-error { color: #ff6666; font-size: 0.8rem; margin-top: 10px; }
         
-        /* Градиенты с анимацией */
         .gradient-white-blue { background: linear-gradient(135deg, #ffffff, #44aaff); background-size: 200% 100%; animation: gradient-shift 3s ease infinite; -webkit-background-clip: text; background-clip: text; color: transparent; }
         .gradient-gold { background: linear-gradient(135deg, #ffd700, #ff8c00); background-size: 200% 100%; animation: gradient-shift 3s ease infinite; -webkit-background-clip: text; background-clip: text; color: transparent; }
         .gradient-pink { background: linear-gradient(135deg, #ff69b4, #ff1493); background-size: 200% 100%; animation: gradient-shift 3s ease infinite; -webkit-background-clip: text; background-clip: text; color: transparent; }
@@ -412,6 +373,27 @@
             100% { background: rgba(255,0,0,0.3); }
         }
         
+        .border-gold { border: 2px solid #ffd700; border-radius: 20px; padding: 2px 8px; display: inline-flex; align-items: center; gap: 5px; }
+        .border-neon { border: 2px solid #00ff88; border-radius: 20px; padding: 2px 8px; display: inline-flex; align-items: center; gap: 5px; box-shadow: 0 0 5px #00ff88; }
+        .border-acid { border: 2px solid #ccff00; border-radius: 20px; padding: 2px 8px; display: inline-flex; align-items: center; gap: 5px; box-shadow: 0 0 5px #ccff00; }
+        .border-ocean { border: 2px solid #44aaff; border-radius: 20px; padding: 2px 8px; display: inline-flex; align-items: center; gap: 5px; }
+        .border-forest { border: 2px solid #228b22; border-radius: 20px; padding: 2px 8px; display: inline-flex; align-items: center; gap: 5px; }
+        .border-rainbow { 
+            border: 2px solid transparent;
+            border-radius: 20px;
+            padding: 2px 8px;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            background: linear-gradient(white, white) padding-box,
+                        linear-gradient(90deg, red, orange, yellow, green, blue, indigo, violet) border-box;
+            animation: border-rotate 3s linear infinite;
+        }
+        @keyframes border-rotate {
+            0% { filter: hue-rotate(0deg); }
+            100% { filter: hue-rotate(360deg); }
+        }
+        
         @media (max-width: 700px) {
             .toolbar { padding: 5px 8px; gap: 5px; }
             button { font-size: 0.65rem; padding: 4px 8px; }
@@ -423,7 +405,7 @@
             .battle-title { left: 65px; font-size: 12px; }
             .chat-panel { width: 280px; bottom: 150px; left: 70px; }
             .style-panel { width: 320px; left: 10px; }
-            .top-panel { width: 260px; }
+            .top-panel { width: 280px; }
             .profile-panel { width: 280px; }
             .admin-panel { top: 70px; padding: 6px 12px; gap: 6px; }
             .auth-box { padding: 20px; min-width: 260px; }
@@ -455,9 +437,6 @@
     <span>👑 АДМИН-ПАНЕЛЬ</span>
     <button id="adminNoCooldownBtn" class="admin-btn">⚡ БЕЗ КД</button>
     <button id="adminPauseBtn" class="admin-btn">⏸️ ПАУЗА</button>
-    <input type="text" id="adminBanInput" class="admin-input" placeholder="Логин" style="display: none;">
-    <button id="adminBanBtn" class="admin-btn" style="display: none;">🔨 БАН</button>
-    <button id="adminUnbanBtn" class="admin-btn" style="display: none;">✅ РАЗБАН</button>
 </div>
 
 <div class="user-panel" id="userPanel" style="display: none;">
@@ -468,7 +447,7 @@
 </div>
 
 <div class="left-buttons" id="leftButtons" style="display: none;">
-    <div class="left-btn" id="topBtn">👥</div>
+    <div class="left-btn" id="topBtn">🏆</div>
     <div class="left-btn" id="chatBtn">💬</div>
 </div>
 
@@ -504,6 +483,7 @@
         <input type="text" class="chat-input" id="chatInput" placeholder="Введите сообщение..." maxlength="100">
         <button class="chat-send" id="chatSendBtn">📤</button>
     </div>
+    <div id="chatError" class="chat-error-message"></div>
 </div>
 
 <div class="profile-panel" id="profilePanel">
@@ -538,14 +518,13 @@
     // 👇👇👇 ВСТАВЬ СВОЙ КОНФИГ FIREBASE СЮДА 👇👇👇
     // ============================================
     const firebaseConfig = {
-    apiKey: "AIzaSyCGVYowGZuSYKilcrsoYubOQQpFWsjeAFo",
-    authDomain: "pixelbattle-test.firebaseapp.com",
-    projectId: "pixelbattle-test",
-    storageBucket: "pixelbattle-test.firebasestorage.app",
-    messagingSenderId: "847940417426",
-    appId: "1:847940417426:web:4e83b4f1cef41de3aab34b",
-    measurementId: "G-2EKL48RDF3"
-  };
+        apiKey: "YOUR_API_KEY",
+        authDomain: "YOUR_AUTH_DOMAIN",
+        projectId: "YOUR_PROJECT_ID",
+        storageBucket: "YOUR_STORAGE_BUCKET",
+        messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+        appId: "YOUR_APP_ID"
+    };
     // ============================================
     
     let db, auth;
@@ -568,6 +547,8 @@
     let userProfiles = {};
     let chatCleanupInterval = null;
     let topListData = [];
+    let bioCooldown = false;
+    let bioCooldownTimer = null;
     
     try {
         if (firebaseConfig.apiKey && firebaseConfig.apiKey !== "YOUR_API_KEY") {
@@ -596,6 +577,15 @@
         }, 5 * 60 * 1000);
     }
     
+    function showChatError(message) {
+        const errorDiv = document.getElementById('chatError');
+        errorDiv.textContent = message;
+        errorDiv.style.opacity = '1';
+        setTimeout(() => {
+            errorDiv.style.opacity = '0';
+        }, 2000);
+    }
+    
     async function loadPlayerStyles() {
         if(!db) return;
         const snap = await db.collection('playerStyles').get();
@@ -607,13 +597,6 @@
         if(!db) return;
         await db.collection('playerStyles').doc(login).set(styleData, { merge: true });
         playerStyles[login] = { ...playerStyles[login], ...styleData };
-        updateTopList();
-    }
-    
-    async function resetPlayerStyle(login) {
-        if(!db) return;
-        await db.collection('playerStyles').doc(login).delete();
-        delete playerStyles[login];
         updateTopList();
     }
     
@@ -679,42 +662,38 @@
     }
     
     async function sendChatMessage() {
+        const input = document.getElementById('chatInput');
+        const text = input.value.trim();
+        
+        if(!text) return;
+        
         if(chatCooldown) {
-            addChatMessage("⏳ Подождите 5 секунд перед следующим сообщением", true);
+            showChatError("⏳ Подождите 5 секунд перед следующим сообщением");
             return;
         }
         if(!currentUser) return;
+        
         const banned = await isUserBanned(currentLogin);
         if(banned) {
-            addChatMessage("⛔ Вы забанены и не можете писать в чат", true);
+            showChatError("⛔ Вы забанены и не можете писать в чат");
             return;
         }
-        const input = document.getElementById('chatInput');
-        const text = input.value.trim();
-        if(!text) return;
+        
         if(text.length > 100) {
-            addChatMessage("⚠️ Сообщение не должно превышать 100 символов", true);
+            showChatError("⚠️ Сообщение не должно превышать 100 символов");
             return;
         }
+        
         chatCooldown = true;
         setTimeout(() => { chatCooldown = false; }, 5000);
+        
         input.value = '';
+        
         await db.collection('chat').add({
             text: text,
             login: currentLogin,
             timestamp: firebase.firestore.FieldValue.serverTimestamp()
         });
-    }
-    
-    function addChatMessage(text, isError = false) {
-        const container = document.getElementById('chatMessages');
-        const div = document.createElement('div');
-        div.className = 'chat-message';
-        div.style.color = isError ? '#ff8888' : '#ffffff';
-        div.innerHTML = text;
-        container.appendChild(div);
-        container.scrollTop = container.scrollHeight;
-        if(container.children.length > 100) container.removeChild(container.children[0]);
     }
     
     function addChatMessageWithName(login, text) {
@@ -850,7 +829,6 @@
         const style = getPlayerStyle(login);
         const emoji = style.emoji ? ` ${style.emoji}` : '';
         const gradientClass = getGradientClass(style.gradient);
-        const borderClass = getBorderClass(style.border);
         const isBanned = await isUserBanned(login);
         const profile = userProfiles[login] || { bio: '' };
         
@@ -862,7 +840,6 @@
         }
         
         const isOwnProfile = (currentLogin === login);
-        const canEdit = !isBanned && isOwnProfile;
         
         const panel = document.getElementById('profilePanel');
         const content = document.getElementById('profileContent');
@@ -872,25 +849,25 @@
             <div class="profile-pixels">🎨 Пикселей: ${pixels}</div>
             ${isBanned ? '<div class="profile-banned">🚫 Забанен</div>' : ''}
             <div class="profile-bio" id="profileBioDisplay">${profile.bio || 'Нет описания'}</div>
-            ${canEdit ? `
-                <textarea id="profileBioEdit" class="profile-bio-edit" rows="3" maxlength="200" placeholder="Введите описание профиля (до 200 символов)...">${profile.bio || ''}</textarea>
-                <button id="profileSaveBtn" class="profile-edit-btn">💾 СОХРАНИТЬ</button>
+            ${isOwnProfile && !isBanned ? `
+                ${bioCooldown ? '<div class="profile-cooldown">⏳ Подождите 5 минут перед следующим изменением</div>' : ''}
+                <textarea id="profileBioEdit" class="profile-bio-edit" rows="3" maxlength="200" placeholder="Введите описание профиля (до 200 символов)..." ${bioCooldown ? 'disabled' : ''}>${profile.bio || ''}</textarea>
+                <button id="profileSaveBtn" class="profile-edit-btn" ${bioCooldown ? 'disabled' : ''}>💾 СОХРАНИТЬ</button>
             ` : ''}
         `;
         
-        if(canEdit) {
+        if(isOwnProfile && !isBanned && !bioCooldown) {
             document.getElementById('profileSaveBtn').onclick = async () => {
                 const newBio = document.getElementById('profileBioEdit').value.trim();
                 if(newBio.length > 200) return;
                 await saveUserBio(login, newBio);
+                bioCooldown = true;
+                if(bioCooldownTimer) clearTimeout(bioCooldownTimer);
+                bioCooldownTimer = setTimeout(() => {
+                    bioCooldown = false;
+                }, 5 * 60 * 1000);
                 showProfile(login);
             };
-        }
-        
-        if(borderClass) {
-            panel.classList.add(borderClass);
-        } else {
-            panel.classList.remove('border-gold', 'border-neon', 'border-acid', 'border-ocean', 'border-forest', 'border-rainbow');
         }
         
         panel.classList.add('show');
@@ -962,80 +939,111 @@
             const rainbowChecked = style.rainbow ? 'active' : '';
             const rainbowMark = style.rainbow ? '✅' : '☐';
             const isBanned = await isUserBanned(login);
+            const contentId = `player-content-${login.replace(/[^a-zA-Z0-9]/g, '_')}`;
             html += `
                 <div class="style-player" data-login="${login}">
-                    <div class="style-player-name">${login} (${doc.data().pixels || 0})</div>
-                    <div class="style-row">
-                        <select class="style-select gradient-select" data-login="${login}">
-                            <option value="None" ${!style.gradient ? 'selected' : ''}>None</option>
-                            <option value="Бело-синий" ${style.gradient === 'Бело-синий' ? 'selected' : ''}>Бело-синий</option>
-                            <option value="Золотой" ${style.gradient === 'Золотой' ? 'selected' : ''}>Золотой</option>
-                            <option value="Розовый" ${style.gradient === 'Розовый' ? 'selected' : ''}>Розовый</option>
-                            <option value="Зелёный" ${style.gradient === 'Зелёный' ? 'selected' : ''}>Зелёный</option>
-                            <option value="Фиолетовый" ${style.gradient === 'Фиолетовый' ? 'selected' : ''}>Фиолетовый</option>
-                            <option value="Огненный" ${style.gradient === 'Огненный' ? 'selected' : ''}>Огненный</option>
-                            <option value="Изумрудный" ${style.gradient === 'Изумрудный' ? 'selected' : ''}>Изумрудный</option>
-                            <option value="Лавандовый" ${style.gradient === 'Лавандовый' ? 'selected' : ''}>Лавандовый</option>
-                            <option value="Мятный" ${style.gradient === 'Мятный' ? 'selected' : ''}>Мятный</option>
-                            <option value="Коралловый" ${style.gradient === 'Коралловый' ? 'selected' : ''}>Коралловый</option>
-                            <option value="Неоновый" ${style.gradient === 'Неоновый' ? 'selected' : ''}>Неоновый</option>
-                            <option value="Кислотный" ${style.gradient === 'Кислотный' ? 'selected' : ''}>Кислотный</option>
-                        </select>
-                        <select class="style-select emoji-select" data-login="${login}">
-                            <option value="None" ${!style.emoji ? 'selected' : ''}>None</option>
-                            <option value="⭐" ${style.emoji === '⭐' ? 'selected' : ''}>⭐</option>
-                            <option value="🔥" ${style.emoji === '🔥' ? 'selected' : ''}>🔥</option>
-                            <option value="💎" ${style.emoji === '💎' ? 'selected' : ''}>💎</option>
-                            <option value="🎨" ${style.emoji === '🎨' ? 'selected' : ''}>🎨</option>
-                            <option value="🏆" ${style.emoji === '🏆' ? 'selected' : ''}>🏆</option>
-                            <option value="💸" ${style.emoji === '💸' ? 'selected' : ''}>💸</option>
-                            <option value="🛠️" ${style.emoji === '🛠️' ? 'selected' : ''}>🛠️</option>
-                            <option value="😎" ${style.emoji === '😎' ? 'selected' : ''}>😎</option>
-                            <option value="👑" ${style.emoji === '👑' ? 'selected' : ''}>👑</option>
-                            <option value="🤖" ${style.emoji === '🤖' ? 'selected' : ''}>🤖</option>
-                            <option value="👾" ${style.emoji === '👾' ? 'selected' : ''}>👾</option>
-                            <option value="💀" ${style.emoji === '💀' ? 'selected' : ''}>💀</option>
-                            <option value="❤️" ${style.emoji === '❤️' ? 'selected' : ''}>❤️</option>
-                            <option value="💙" ${style.emoji === '💙' ? 'selected' : ''}>💙</option>
-                            <option value="💚" ${style.emoji === '💚' ? 'selected' : ''}>💚</option>
-                            <option value="💛" ${style.emoji === '💛' ? 'selected' : ''}>💛</option>
-                        </select>
-                        <select class="style-select bg-select" data-login="${login}">
-                            <option value="None" ${!style.bg ? 'selected' : ''}>None</option>
-                            <option value="Золотая" ${style.bg === 'Золотая' ? 'selected' : ''}>Золотая</option>
-                            <option value="Серебряная" ${style.bg === 'Серебряная' ? 'selected' : ''}>Серебряная</option>
-                            <option value="Бронзовая" ${style.bg === 'Бронзовая' ? 'selected' : ''}>Бронзовая</option>
-                            <option value="Неоновая" ${style.bg === 'Неоновая' ? 'selected' : ''}>Неоновая</option>
-                            <option value="Кислотная" ${style.bg === 'Кислотная' ? 'selected' : ''}>Кислотная</option>
-                            <option value="Лесная" ${style.bg === 'Лесная' ? 'selected' : ''}>Лесная</option>
-                            <option value="Океанская" ${style.bg === 'Океанская' ? 'selected' : ''}>Океанская</option>
-                        </select>
-                        <select class="style-select border-select" data-login="${login}">
-                            <option value="None" ${!style.border ? 'selected' : ''}>None</option>
-                            <option value="Золотая" ${style.border === 'Золотая' ? 'selected' : ''}>Золотая</option>
-                            <option value="Неоновая" ${style.border === 'Неоновая' ? 'selected' : ''}>Неоновая</option>
-                            <option value="Кислотная" ${style.border === 'Кислотная' ? 'selected' : ''}>Кислотная</option>
-                            <option value="Океанская" ${style.border === 'Океанская' ? 'selected' : ''}>Океанская</option>
-                            <option value="Лесная" ${style.border === 'Лесная' ? 'selected' : ''}>Лесная</option>
-                            <option value="Радужная" ${style.border === 'Радужная' ? 'selected' : ''}>Радужная</option>
-                        </select>
-                        <button class="rainbow-checkbox ${rainbowChecked}" data-login="${login}">🌈 ${rainbowMark}</button>
-                        ${isBanned ? 
-                            `<button class="unban-btn" data-login="${login}">✅ РАЗБАН</button>` : 
-                            `<button class="ban-btn" data-login="${login}">🔨 БАН</button>`
-                        }
+                    <div class="style-player-header" data-content="${contentId}">
+                        <div class="style-player-name">${login} (${doc.data().pixels || 0})</div>
+                        <button class="style-toggle">▼</button>
+                    </div>
+                    <div class="style-player-content" id="${contentId}">
+                        <div class="style-row">
+                            <select class="style-select gradient-select" data-login="${login}">
+                                <option value="None" ${!style.gradient ? 'selected' : ''}>None</option>
+                                <option value="Бело-синий" ${style.gradient === 'Бело-синий' ? 'selected' : ''}>Бело-синий</option>
+                                <option value="Золотой" ${style.gradient === 'Золотой' ? 'selected' : ''}>Золотой</option>
+                                <option value="Розовый" ${style.gradient === 'Розовый' ? 'selected' : ''}>Розовый</option>
+                                <option value="Зелёный" ${style.gradient === 'Зелёный' ? 'selected' : ''}>Зелёный</option>
+                                <option value="Фиолетовый" ${style.gradient === 'Фиолетовый' ? 'selected' : ''}>Фиолетовый</option>
+                                <option value="Огненный" ${style.gradient === 'Огненный' ? 'selected' : ''}>Огненный</option>
+                                <option value="Изумрудный" ${style.gradient === 'Изумрудный' ? 'selected' : ''}>Изумрудный</option>
+                                <option value="Лавандовый" ${style.gradient === 'Лавандовый' ? 'selected' : ''}>Лавандовый</option>
+                                <option value="Мятный" ${style.gradient === 'Мятный' ? 'selected' : ''}>Мятный</option>
+                                <option value="Коралловый" ${style.gradient === 'Коралловый' ? 'selected' : ''}>Коралловый</option>
+                                <option value="Неоновый" ${style.gradient === 'Неоновый' ? 'selected' : ''}>Неоновый</option>
+                                <option value="Кислотный" ${style.gradient === 'Кислотный' ? 'selected' : ''}>Кислотный</option>
+                            </select>
+                            <select class="style-select emoji-select" data-login="${login}">
+                                <option value="None" ${!style.emoji ? 'selected' : ''}>None</option>
+                                <option value="⭐" ${style.emoji === '⭐' ? 'selected' : ''}>⭐</option>
+                                <option value="🔥" ${style.emoji === '🔥' ? 'selected' : ''}>🔥</option>
+                                <option value="💎" ${style.emoji === '💎' ? 'selected' : ''}>💎</option>
+                                <option value="🎨" ${style.emoji === '🎨' ? 'selected' : ''}>🎨</option>
+                                <option value="🏆" ${style.emoji === '🏆' ? 'selected' : ''}>🏆</option>
+                                <option value="💸" ${style.emoji === '💸' ? 'selected' : ''}>💸</option>
+                                <option value="🛠️" ${style.emoji === '🛠️' ? 'selected' : ''}>🛠️</option>
+                                <option value="😎" ${style.emoji === '😎' ? 'selected' : ''}>😎</option>
+                                <option value="👑" ${style.emoji === '👑' ? 'selected' : ''}>👑</option>
+                                <option value="🤖" ${style.emoji === '🤖' ? 'selected' : ''}>🤖</option>
+                                <option value="👾" ${style.emoji === '👾' ? 'selected' : ''}>👾</option>
+                                <option value="💀" ${style.emoji === '💀' ? 'selected' : ''}>💀</option>
+                                <option value="❤️" ${style.emoji === '❤️' ? 'selected' : ''}>❤️</option>
+                                <option value="💙" ${style.emoji === '💙' ? 'selected' : ''}>💙</option>
+                                <option value="💚" ${style.emoji === '💚' ? 'selected' : ''}>💚</option>
+                                <option value="💛" ${style.emoji === '💛' ? 'selected' : ''}>💛</option>
+                            </select>
+                            <select class="style-select bg-select" data-login="${login}">
+                                <option value="None" ${!style.bg ? 'selected' : ''}>None</option>
+                                <option value="Золотая" ${style.bg === 'Золотая' ? 'selected' : ''}>Золотая</option>
+                                <option value="Серебряная" ${style.bg === 'Серебряная' ? 'selected' : ''}>Серебряная</option>
+                                <option value="Бронзовая" ${style.bg === 'Бронзовая' ? 'selected' : ''}>Бронзовая</option>
+                                <option value="Неоновая" ${style.bg === 'Неоновая' ? 'selected' : ''}>Неоновая</option>
+                                <option value="Кислотная" ${style.bg === 'Кислотная' ? 'selected' : ''}>Кислотная</option>
+                                <option value="Лесная" ${style.bg === 'Лесная' ? 'selected' : ''}>Лесная</option>
+                                <option value="Океанская" ${style.bg === 'Океанская' ? 'selected' : ''}>Океанская</option>
+                            </select>
+                            <select class="style-select border-select" data-login="${login}">
+                                <option value="None" ${!style.border ? 'selected' : ''}>None</option>
+                                <option value="Золотая" ${style.border === 'Золотая' ? 'selected' : ''}>Золотая</option>
+                                <option value="Неоновая" ${style.border === 'Неоновая' ? 'selected' : ''}>Неоновая</option>
+                                <option value="Кислотная" ${style.border === 'Кислотная' ? 'selected' : ''}>Кислотная</option>
+                                <option value="Океанская" ${style.border === 'Океанская' ? 'selected' : ''}>Океанская</option>
+                                <option value="Лесная" ${style.border === 'Лесная' ? 'selected' : ''}>Лесная</option>
+                                <option value="Радужная" ${style.border === 'Радужная' ? 'selected' : ''}>Радужная</option>
+                            </select>
+                            <button class="rainbow-checkbox ${rainbowChecked}" data-login="${login}">🌈 ${rainbowMark}</button>
+                            ${isBanned ? 
+                                `<button class="unban-btn" data-login="${login}">✅ РАЗБАН</button>` : 
+                                `<button class="ban-btn" data-login="${login}">🔨 БАН</button>`
+                            }
+                        </div>
                     </div>
                 </div>
             `;
         }
         container.innerHTML = html;
         
+        document.querySelectorAll('.style-player-header').forEach(header => {
+            const contentId = header.dataset.content;
+            const content = document.getElementById(contentId);
+            const toggleBtn = header.querySelector('.style-toggle');
+            header.onclick = (e) => {
+                if(e.target === toggleBtn) return;
+                if(content.classList.contains('show')) {
+                    content.classList.remove('show');
+                    toggleBtn.innerHTML = '▼';
+                } else {
+                    content.classList.add('show');
+                    toggleBtn.innerHTML = '▲';
+                }
+            };
+            toggleBtn.onclick = (e) => {
+                e.stopPropagation();
+                if(content.classList.contains('show')) {
+                    content.classList.remove('show');
+                    toggleBtn.innerHTML = '▼';
+                } else {
+                    content.classList.add('show');
+                    toggleBtn.innerHTML = '▲';
+                }
+            };
+        });
+        
         document.querySelectorAll('.gradient-select').forEach(select => {
             select.onchange = async (e) => {
                 const login = select.dataset.login;
                 const value = select.value === 'None' ? null : select.value;
                 await savePlayerStyle(login, { gradient: value });
-                updateStylePanel();
                 updateTopList();
             };
         });
@@ -1044,7 +1052,6 @@
                 const login = select.dataset.login;
                 const value = select.value === 'None' ? null : select.value;
                 await savePlayerStyle(login, { emoji: value });
-                updateStylePanel();
                 updateTopList();
             };
         });
@@ -1053,7 +1060,6 @@
                 const login = select.dataset.login;
                 const value = select.value === 'None' ? null : select.value;
                 await savePlayerStyle(login, { bg: value, rainbow: false });
-                updateStylePanel();
                 updateTopList();
             };
         });
@@ -1062,7 +1068,6 @@
                 const login = select.dataset.login;
                 const value = select.value === 'None' ? null : select.value;
                 await savePlayerStyle(login, { border: value });
-                updateStylePanel();
                 updateTopList();
             };
         });
