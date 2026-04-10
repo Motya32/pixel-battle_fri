@@ -1,0 +1,1921 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Пиксель-Баттл</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' font-size='70' fill='%23ffaa44'>⚔️</text></svg>">
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; }
+        body { overflow: hidden; font-family: monospace; background: #0a0a12; touch-action: none; transition: background 0.2s; }
+        body.light { background: #e8eef4; }
+        .canvas-wrapper { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #1a1a2e; touch-action: none; transition: background 0.2s; display: none; }
+        body.light .canvas-wrapper { background: #d4deec; }
+        .viewport { position: absolute; top: 0; left: 0; transform-origin: 0 0; }
+        canvas { display: block; image-rendering: crisp-edges; image-rendering: pixelated; cursor: crosshair; touch-action: none; box-shadow: 0 0 0 2px rgba(0,0,0,0.1); background: #F5F9FF; }
+        
+        .toolbar { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: rgba(10,15,25,0.95); backdrop-filter: blur(12px); border-radius: 60px; padding: 8px 14px; display: none; gap: 8px; flex-wrap: wrap; z-index: 1000; transition: background 0.2s; }
+        body.light .toolbar { background: rgba(230,240,255,0.95); box-shadow: 0 0 0 1px rgba(0,0,0,0.1); }
+        
+        .left-buttons {
+            position: fixed;
+            bottom: 100px;
+            left: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            z-index: 1001;
+        }
+        .left-btn {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255,255,255,0.2);
+            font-size: 1.5rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: 0.1s;
+        }
+        .left-btn:active { transform: scale(0.95); }
+        body.light .left-btn { background: rgba(200,200,220,0.8); }
+        
+        .admin-style-btn {
+            position: fixed;
+            top: 15px;
+            left: 15px;
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255,255,255,0.2);
+            font-size: 1.5rem;
+            cursor: pointer;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1001;
+            transition: 0.1s;
+        }
+        .admin-style-btn:active { transform: scale(0.95); }
+        body.light .admin-style-btn { background: rgba(200,200,220,0.8); }
+        
+        .style-panel {
+            position: fixed;
+            top: 80px;
+            left: 15px;
+            width: 380px;
+            max-height: 500px;
+            background: rgba(10,15,25,0.95);
+            backdrop-filter: blur(12px);
+            border-radius: 20px;
+            border: 1px solid rgba(255,255,255,0.2);
+            z-index: 1002;
+            display: none;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .style-panel.show { display: flex; }
+        .style-panel-header {
+            padding: 12px 15px;
+            background: rgba(0,0,0,0.5);
+            font-weight: bold;
+            color: #ffaa44;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .style-close { background: none; border: none; color: #ffaa44; font-size: 1.2rem; cursor: pointer; padding: 0 5px; box-shadow: none; }
+        .style-list { max-height: 450px; overflow-y: auto; padding: 10px; }
+        .style-player {
+            padding: 12px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            margin-bottom: 10px;
+        }
+        .style-player:last-child { border-bottom: none; margin-bottom: 0; }
+        .style-player-name { font-weight: bold; color: #ffaa88; margin-bottom: 8px; font-size: 0.85rem; }
+        .style-row { display: flex; align-items: center; gap: 10px; margin-top: 8px; flex-wrap: wrap; }
+        .style-select {
+            background: #2a2f3a;
+            border: none;
+            padding: 5px 8px;
+            border-radius: 20px;
+            color: white;
+            font-family: monospace;
+            font-size: 0.7rem;
+            cursor: pointer;
+            outline: none;
+        }
+        .rainbow-checkbox {
+            background: #2a2f3a;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 20px;
+            color: white;
+            font-family: monospace;
+            font-size: 0.7rem;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .rainbow-checkbox.active { background: #8b3a3a; }
+        .ban-btn { background: #8b3a3a; padding: 4px 10px; font-size: 0.65rem; box-shadow: 0 2px 0 #4a1a1a; }
+        .unban-btn { background: #2c6a2f; padding: 4px 10px; font-size: 0.65rem; box-shadow: 0 2px 0 #1a4a1a; }
+        body.light .style-select { background: #d0d8e8; color: #1a1a2e; }
+        body.light .rainbow-checkbox { background: #d0d8e8; color: #1a1a2e; }
+        body.light .rainbow-checkbox.active { background: #8b3a3a; color: white; }
+        
+        .top-panel {
+            position: fixed;
+            bottom: 160px;
+            left: 15px;
+            width: 300px;
+            max-height: 400px;
+            background: rgba(10,15,25,0.95);
+            backdrop-filter: blur(12px);
+            border-radius: 20px;
+            border: 1px solid rgba(255,255,255,0.2);
+            z-index: 1002;
+            display: none;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .top-panel.show { display: flex; }
+        .top-panel-header {
+            padding: 12px 15px;
+            background: rgba(0,0,0,0.5);
+            font-weight: bold;
+            color: #ffaa44;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .top-close { background: none; border: none; color: #ffaa44; font-size: 1.2rem; cursor: pointer; padding: 0 5px; box-shadow: none; }
+        .top-list { max-height: 350px; overflow-y: auto; padding: 10px; }
+        .top-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 12px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            font-size: 0.8rem;
+            transition: background 0.2s;
+            border-radius: 12px;
+            margin-bottom: 4px;
+            cursor: pointer;
+        }
+        .top-item:last-child { border-bottom: none; margin-bottom: 0; }
+        .top-item:hover { background: rgba(255,255,255,0.05); }
+        .top-rank { color: #ffaa44; font-weight: bold; width: 35px; }
+        .top-name-wrapper { flex: 1; display: flex; align-items: center; gap: 5px; }
+        .top-pixels { color: #88ffaa; }
+        body.light .top-name { color: #1a1a2e; }
+        
+        /* Рамка с эффектом бегущей линии */
+        .glow-border {
+            position: relative;
+            border-radius: 16px;
+            overflow: hidden;
+        }
+        .glow-border::before {
+            content: '';
+            position: absolute;
+            top: -2px;
+            left: -2px;
+            right: -2px;
+            bottom: -2px;
+            border-radius: 18px;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.8), transparent);
+            background-size: 200% 100%;
+            animation: shine 3s linear infinite;
+            pointer-events: none;
+            z-index: 1;
+        }
+        @keyframes shine {
+            0% { background-position: 100% 0; }
+            100% { background-position: -100% 0; }
+        }
+        
+        /* Рамка с цветом */
+        .border-gold { border: 2px solid #ffd700; border-radius: 16px; padding: 8px 12px; }
+        .border-neon { border: 2px solid #00ff88; border-radius: 16px; padding: 8px 12px; box-shadow: 0 0 5px #00ff88; }
+        .border-acid { border: 2px solid #ccff00; border-radius: 16px; padding: 8px 12px; box-shadow: 0 0 5px #ccff00; }
+        .border-ocean { border: 2px solid #44aaff; border-radius: 16px; padding: 8px 12px; }
+        .border-forest { border: 2px solid #228b22; border-radius: 16px; padding: 8px 12px; }
+        .border-rainbow { 
+            border: 2px solid transparent;
+            border-radius: 16px;
+            padding: 8px 12px;
+            background: linear-gradient(white, white) padding-box,
+                        linear-gradient(90deg, red, orange, yellow, green, blue, indigo, violet) border-box;
+            animation: border-rotate 3s linear infinite;
+        }
+        @keyframes border-rotate {
+            0% { filter: hue-rotate(0deg); }
+            100% { filter: hue-rotate(360deg); }
+        }
+        
+        .chat-panel {
+            position: fixed;
+            bottom: 160px;
+            left: 80px;
+            width: 320px;
+            background: rgba(10,15,25,0.95);
+            backdrop-filter: blur(12px);
+            border-radius: 20px;
+            border: 1px solid rgba(255,255,255,0.2);
+            z-index: 1002;
+            display: none;
+            flex-direction: column;
+            overflow: hidden;
+            cursor: move;
+        }
+        .chat-panel.show { display: flex; }
+        .chat-header {
+            padding: 12px 15px;
+            background: rgba(0,0,0,0.5);
+            font-weight: bold;
+            color: #ffaa44;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: grab;
+        }
+        .chat-header:active { cursor: grabbing; }
+        .chat-close { background: none; border: none; color: #ffaa44; font-size: 1.2rem; cursor: pointer; padding: 0 5px; box-shadow: none; }
+        .chat-messages { height: 250px; overflow-y: auto; padding: 10px; font-size: 0.75rem; display: flex; flex-direction: column; gap: 5px; }
+        .chat-message { word-wrap: break-word; padding: 4px 8px; background: rgba(255,255,255,0.05); border-radius: 10px; color: #ffffff; cursor: pointer; }
+        .chat-message:hover { background: rgba(255,255,255,0.1); }
+        .chat-name { color: #ffffff; }
+        .chat-input-area { display: flex; padding: 10px; gap: 8px; border-top: 1px solid rgba(255,255,255,0.1); }
+        .chat-input { flex: 1; background: #2a2f3a; border: none; padding: 8px 12px; border-radius: 20px; color: white; font-family: monospace; font-size: 0.75rem; outline: none; maxlength: 100; }
+        .chat-send { background: #2c3e2f; padding: 6px 12px; font-size: 0.7rem; box-shadow: 0 2px 0 #0f2a0f; }
+        body.light .chat-panel { background: rgba(230,240,255,0.95); }
+        body.light .chat-message { background: rgba(0,0,0,0.05); color: #1a1a2e; }
+        body.light .chat-name { color: #1a1a2e; }
+        
+        /* Панель профиля */
+        .profile-panel {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 320px;
+            background: rgba(10,15,25,0.98);
+            backdrop-filter: blur(12px);
+            border-radius: 24px;
+            z-index: 2000;
+            display: none;
+            flex-direction: column;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+        }
+        .profile-panel.show { display: flex; }
+        .profile-header {
+            padding: 15px 20px;
+            background: rgba(0,0,0,0.5);
+            border-radius: 24px 24px 0 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: bold;
+            color: #ffaa44;
+        }
+        .profile-close { background: none; border: none; color: #ffaa44; font-size: 1.2rem; cursor: pointer; padding: 0 5px; box-shadow: none; }
+        .profile-content {
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .profile-rank { color: #ffaa44; font-size: 0.8rem; margin-bottom: 5px; }
+        .profile-name { font-size: 1.2rem; font-weight: bold; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+        .profile-pixels { color: #88ffaa; font-size: 0.9rem; }
+        .profile-banned { color: #ff8888; font-size: 0.7rem; margin-top: 5px; }
+        .profile-bio {
+            background: rgba(255,255,255,0.05);
+            padding: 12px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            word-wrap: break-word;
+        }
+        .profile-bio-edit {
+            width: 100%;
+            background: #2a2f3a;
+            border: none;
+            padding: 10px;
+            border-radius: 12px;
+            color: white;
+            font-family: monospace;
+            font-size: 0.8rem;
+            resize: vertical;
+            outline: none;
+        }
+        .profile-edit-btn {
+            background: #4a6a4f;
+            padding: 6px 12px;
+            font-size: 0.7rem;
+            align-self: flex-start;
+        }
+        body.light .profile-panel { background: rgba(230,240,255,0.98); }
+        body.light .profile-bio { background: rgba(0,0,0,0.05); color: #1a1a2e; }
+        body.light .profile-bio-edit { background: #d0d8e8; color: #1a1a2e; }
+        
+        .user-panel { position: fixed; top: 15px; right: 15px; display: flex; flex-direction: column; align-items: flex-end; gap: 10px; z-index: 1001; }
+        .user-info { background: rgba(0,0,0,0.6); backdrop-filter: blur(8px); padding: 8px 15px; border-radius: 40px; color: #ffaa88; font-size: 0.85rem; font-weight: bold; display: flex; align-items: center; gap: 8px; }
+        .circle-btn { width: 40px; height: 40px; border-radius: 50%; background: rgba(0,0,0,0.6); backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,0.2); font-size: 1.3rem; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.1s; }
+        .circle-btn:active { transform: scale(0.95); }
+        .logout-btn { background: rgba(0,0,0,0.6); backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,0.2); color: #ffaa88; padding: 8px 12px; border-radius: 40px; cursor: pointer; font-size: 0.8rem; }
+        
+        .color-palette { background: #2a2f3a; padding: 4px 10px; border-radius: 50px; display: flex; gap: 5px; overflow-x: auto; max-width: 280px; }
+        .palette-color { width: 24px; height: 24px; border-radius: 50%; cursor: pointer; border: 2px solid rgba(255,255,255,0.3); flex-shrink: 0; }
+        button { background: #2c3e2f; border: none; font-family: monospace; font-weight: bold; font-size: 0.75rem; padding: 5px 12px; border-radius: 40px; color: white; cursor: pointer; box-shadow: 0 3px 0 #0f2a0f; transition: 0.05s linear; }
+        button:active { transform: translateY(2px); box-shadow: 0 1px 0 #0f2a0f; }
+        .cooldown-container { background: #2a2f3a; padding: 4px 10px; border-radius: 40px; min-width: 130px; }
+        .cooldown-label { font-size: 0.65rem; color: #aaffdd; text-align: center; }
+        .progress-bar-bg { background: #4a4f5a; border-radius: 20px; height: 6px; overflow: hidden; margin-top: 4px; }
+        .progress-bar-fill { background: linear-gradient(90deg, #ffaa44, #ff6644); width: 100%; height: 100%; border-radius: 20px; transition: width 0.1s; }
+        .status { background: #000000aa; padding: 4px 10px; border-radius: 40px; font-size: 0.7rem; color: white; }
+        .coordinates { position: fixed; bottom: 100px; right: 15px; background: rgba(0,0,0,0.5); padding: 4px 10px; border-radius: 20px; font-size: 10px; color: #88ffaa; z-index: 999; }
+        .battle-title { position: fixed; top: 15px; left: 80px; background: rgba(0,0,0,0.6); padding: 6px 14px; border-radius: 30px; font-size: 14px; font-weight: bold; color: #ffaa44; z-index: 1000; }
+        
+        .cooldown-ring { position: fixed; width: 80px; height: 80px; border-radius: 50%; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); display: none; align-items: center; justify-content: center; z-index: 10000; pointer-events: none; }
+        body:not(.mobile) .cooldown-ring { transform: translate(-50%, -50%); }
+        body.mobile .cooldown-ring { bottom: 120px; left: 50%; transform: translateX(-50%); }
+        .cooldown-ring svg { width: 70px; height: 70px; transform: rotate(-90deg); }
+        .cooldown-ring circle { fill: none; stroke: #ffaa44; stroke-width: 6; stroke-linecap: round; stroke-dasharray: 188.5; stroke-dashoffset: 0; transition: stroke-dashoffset 0.05s linear; }
+        .cooldown-ring .bg-circle { stroke: rgba(255,255,255,0.2); stroke-dashoffset: 0; }
+        .cooldown-ring span { position: absolute; color: white; font-size: 1.2rem; font-weight: bold; text-shadow: 0 0 5px black; }
+        
+        .confirm-panel { position: fixed; bottom: 120px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.9); backdrop-filter: blur(12px); border-radius: 60px; padding: 10px 20px; display: none; gap: 15px; z-index: 1100; border: 2px solid #ffaa44; }
+        .confirm-panel.show { display: flex; }
+        .confirm-btn { background: #2c6a2f; }
+        .cancel-btn { background: #6a2c2c; }
+        .pixel-outline { position: absolute; border: 3px solid #ffaa44; background: rgba(255,170,68,0.2); pointer-events: none; z-index: 100; transition: all 0.05s; box-shadow: 0 0 10px #ffaa44; }
+        @keyframes pixelPulse { 0% { filter: brightness(1); transform: scale(1); } 50% { filter: brightness(1.5); transform: scale(1.1); } 100% { filter: brightness(1); transform: scale(1); } }
+        .pulse-animation { animation: pixelPulse 0.2s ease-out; }
+        
+        .admin-panel { position: fixed; top: 80px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.95); border-radius: 40px; padding: 8px 16px; display: none; gap: 10px; flex-wrap: wrap; justify-content: center; z-index: 1001; border: 2px solid #ff4444; max-width: 90vw; }
+        .admin-panel.show { display: flex; }
+        .admin-btn { background: #8b3a3a; box-shadow: 0 3px 0 #4a1a1a; }
+        
+        .auth-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 10000; display: flex; justify-content: center; align-items: center; }
+        .auth-box { background: #1a1a2e; padding: 30px; border-radius: 30px; border: 2px solid #ffaa44; text-align: center; min-width: 300px; }
+        .auth-box input { display: block; width: 100%; margin: 10px 0; padding: 12px; background: #2a2f3a; border: none; border-radius: 30px; color: white; font-size: 1rem; text-align: center; outline: none; }
+        .password-wrapper { position: relative; display: flex; align-items: center; }
+        .password-wrapper input { flex: 1; padding-right: 40px; }
+        .toggle-password { position: absolute; right: 12px; cursor: pointer; font-size: 1.2rem; background: none; border: none; box-shadow: none; padding: 0; color: #ffaa88; }
+        .auth-error { color: #ff6666; font-size: 0.8rem; margin-top: 10px; }
+        
+        /* Градиенты с анимацией */
+        .gradient-white-blue { background: linear-gradient(135deg, #ffffff, #44aaff); background-size: 200% 100%; animation: gradient-shift 3s ease infinite; -webkit-background-clip: text; background-clip: text; color: transparent; }
+        .gradient-gold { background: linear-gradient(135deg, #ffd700, #ff8c00); background-size: 200% 100%; animation: gradient-shift 3s ease infinite; -webkit-background-clip: text; background-clip: text; color: transparent; }
+        .gradient-pink { background: linear-gradient(135deg, #ff69b4, #ff1493); background-size: 200% 100%; animation: gradient-shift 3s ease infinite; -webkit-background-clip: text; background-clip: text; color: transparent; }
+        .gradient-green { background: linear-gradient(135deg, #00ff88, #00cc44); background-size: 200% 100%; animation: gradient-shift 3s ease infinite; -webkit-background-clip: text; background-clip: text; color: transparent; }
+        .gradient-purple { background: linear-gradient(135deg, #aa66ff, #8844cc); background-size: 200% 100%; animation: gradient-shift 3s ease infinite; -webkit-background-clip: text; background-clip: text; color: transparent; }
+        .gradient-fire { background: linear-gradient(135deg, #ff6600, #ff3300); background-size: 200% 100%; animation: gradient-shift 3s ease infinite; -webkit-background-clip: text; background-clip: text; color: transparent; }
+        .gradient-emerald { background: linear-gradient(135deg, #50c878, #228b22); background-size: 200% 100%; animation: gradient-shift 3s ease infinite; -webkit-background-clip: text; background-clip: text; color: transparent; }
+        .gradient-lavender { background: linear-gradient(135deg, #e6e6fa, #9370db); background-size: 200% 100%; animation: gradient-shift 3s ease infinite; -webkit-background-clip: text; background-clip: text; color: transparent; }
+        .gradient-mint { background: linear-gradient(135deg, #98ff98, #3cb371); background-size: 200% 100%; animation: gradient-shift 3s ease infinite; -webkit-background-clip: text; background-clip: text; color: transparent; }
+        .gradient-coral { background: linear-gradient(135deg, #ff7f50, #ff6347); background-size: 200% 100%; animation: gradient-shift 3s ease infinite; -webkit-background-clip: text; background-clip: text; color: transparent; }
+        .gradient-neon { background: linear-gradient(135deg, #00ff88, #00ffcc); background-size: 200% 100%; animation: gradient-shift 1s ease infinite; -webkit-background-clip: text; background-clip: text; color: transparent; }
+        .gradient-acid { background: linear-gradient(135deg, #ccff00, #88ff00); background-size: 200% 100%; animation: gradient-shift 0.8s ease infinite; -webkit-background-clip: text; background-clip: text; color: transparent; }
+        
+        @keyframes gradient-shift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        
+        .bg-gold { background: rgba(255,215,0,0.2); border-radius: 12px; }
+        .bg-silver { background: rgba(192,192,192,0.2); border-radius: 12px; }
+        .bg-bronze { background: rgba(205,127,50,0.2); border-radius: 12px; }
+        .bg-neon { background: rgba(0,255,136,0.2); border-radius: 12px; box-shadow: 0 0 5px rgba(0,255,136,0.3); }
+        .bg-acid { background: rgba(204,255,0,0.2); border-radius: 12px; box-shadow: 0 0 5px rgba(204,255,0,0.3); }
+        .bg-forest { background: rgba(34,139,34,0.2); border-radius: 12px; }
+        .bg-ocean { background: rgba(68,170,255,0.2); border-radius: 12px; }
+        .bg-rainbow { animation: rainbow-bg 2s linear infinite; border-radius: 12px; }
+        @keyframes rainbow-bg {
+            0% { background: rgba(255,0,0,0.3); }
+            16% { background: rgba(255,165,0,0.3); }
+            33% { background: rgba(255,255,0,0.3); }
+            50% { background: rgba(0,255,0,0.3); }
+            66% { background: rgba(0,0,255,0.3); }
+            83% { background: rgba(75,0,130,0.3); }
+            100% { background: rgba(255,0,0,0.3); }
+        }
+        
+        @media (max-width: 700px) {
+            .toolbar { padding: 5px 8px; gap: 5px; }
+            button { font-size: 0.65rem; padding: 4px 8px; }
+            .palette-color { width: 20px; height: 20px; }
+            .cooldown-ring { width: 60px; height: 60px; bottom: 100px; }
+            .circle-btn { width: 36px; height: 36px; font-size: 1.1rem; }
+            .left-btn { width: 40px; height: 40px; font-size: 1.2rem; }
+            .admin-style-btn { width: 40px; height: 40px; font-size: 1.2rem; top: 10px; left: 10px; }
+            .battle-title { left: 65px; font-size: 12px; }
+            .chat-panel { width: 280px; bottom: 150px; left: 70px; }
+            .style-panel { width: 320px; left: 10px; }
+            .top-panel { width: 260px; }
+            .profile-panel { width: 280px; }
+            .admin-panel { top: 70px; padding: 6px 12px; gap: 6px; }
+            .auth-box { padding: 20px; min-width: 260px; }
+        }
+    </style>
+</head>
+<body>
+<div class="canvas-wrapper" id="canvasWrapper">
+    <div class="viewport" id="viewport">
+        <canvas id="pixelCanvas" width="1500" height="1500"></canvas>
+    </div>
+</div>
+
+<div class="toolbar" id="toolbar">
+    <input type="color" id="colorPicker" value="#000000">
+    <div class="color-palette" id="colorPalette"><span>🎨</span></div>
+    <button id="pipetteBtn">💧 ПИПЕТКА</button>
+    <button id="toggleGridBtn">🔲 СЕТКА</button>
+    <button id="screenshotBtn">📸 СКРИН</button>
+    <button id="ringToggleBtn">⭕ КРУГ ВКЛ</button>
+    <div class="cooldown-container">
+        <div class="cooldown-label" id="cooldownLabel">✅ ГОТОВ</div>
+        <div class="progress-bar-bg"><div class="progress-bar-fill" id="progressFill" style="width: 100%;"></div></div>
+    </div>
+    <div class="status" id="modeStatus">🎨 Кисть</div>
+</div>
+
+<div class="admin-panel" id="adminPanel">
+    <span>👑 АДМИН-ПАНЕЛЬ</span>
+    <button id="adminNoCooldownBtn" class="admin-btn">⚡ БЕЗ КД</button>
+    <button id="adminPauseBtn" class="admin-btn">⏸️ ПАУЗА</button>
+    <input type="text" id="adminBanInput" class="admin-input" placeholder="Логин" style="display: none;">
+    <button id="adminBanBtn" class="admin-btn" style="display: none;">🔨 БАН</button>
+    <button id="adminUnbanBtn" class="admin-btn" style="display: none;">✅ РАЗБАН</button>
+</div>
+
+<div class="user-panel" id="userPanel" style="display: none;">
+    <div class="user-info" id="userInfo"></div>
+    <div class="circle-btn" id="themeBtnFixed">🌙</div>
+    <div class="circle-btn" id="soundToggleBtnFixed">🔊</div>
+    <div class="logout-btn" id="logoutBtn">🚪 ВЫЙТИ</div>
+</div>
+
+<div class="left-buttons" id="leftButtons" style="display: none;">
+    <div class="left-btn" id="topBtn">👥</div>
+    <div class="left-btn" id="chatBtn">💬</div>
+</div>
+
+<div class="admin-style-btn" id="adminStyleBtn">❗</div>
+
+<div class="style-panel" id="stylePanel">
+    <div class="style-panel-header">
+        <span>❗ УПРАВЛЕНИЕ ВНЕШНИМ ВИДОМ</span>
+        <button class="style-close" id="styleClose">✕</button>
+    </div>
+    <div class="style-list" id="styleList">
+        <div style="text-align: center; padding: 20px;">Загрузка...</div>
+    </div>
+</div>
+
+<div class="top-panel" id="topPanel">
+    <div class="top-panel-header">
+        <span>🏆 ТОП ИГРОКОВ</span>
+        <button class="top-close" id="topClose">✕</button>
+    </div>
+    <div class="top-list" id="topList">
+        <div style="text-align: center; padding: 20px;">Загрузка...</div>
+    </div>
+</div>
+
+<div class="chat-panel" id="chatPanel">
+    <div class="chat-header" id="chatHeader">
+        <span>💬 ЧАТ</span>
+        <button class="chat-close" id="chatClose">−</button>
+    </div>
+    <div class="chat-messages" id="chatMessages"></div>
+    <div class="chat-input-area">
+        <input type="text" class="chat-input" id="chatInput" placeholder="Введите сообщение..." maxlength="100">
+        <button class="chat-send" id="chatSendBtn">📤</button>
+    </div>
+</div>
+
+<div class="profile-panel" id="profilePanel">
+    <div class="profile-header">
+        <span>👤 ПРОФИЛЬ</span>
+        <button class="profile-close" id="profileClose">✕</button>
+    </div>
+    <div class="profile-content" id="profileContent">
+        <div style="text-align: center; padding: 20px;">Загрузка...</div>
+    </div>
+</div>
+
+<div class="confirm-panel" id="confirmPanel">
+    <span>📍 Поставить пиксель?</span>
+    <button id="confirmBtn" class="confirm-btn">✅ ПОСТАВИТЬ</button>
+    <button id="cancelBtn" class="cancel-btn">❌ ОТМЕНА</button>
+</div>
+
+<div class="cooldown-ring" id="cooldownRing">
+    <svg viewBox="0 0 100 100">
+        <circle class="bg-circle" cx="50" cy="50" r="30" stroke="rgba(255,255,255,0.2)" stroke-width="6" fill="none"/>
+        <circle id="cooldownCircle" cx="50" cy="50" r="30" stroke="#ffaa44" stroke-width="6" fill="none" stroke-linecap="round" stroke-dasharray="188.5" stroke-dashoffset="0"/>
+    </svg>
+    <span id="cooldownSeconds"></span>
+</div>
+
+<div class="battle-title">⚔️ PIXEL BATTLE ⚔️</div>
+<div class="coordinates" id="coordinates">📍 X: --, Y: --</div>
+
+<script>
+    // ============================================
+    // 👇👇👇 ВСТАВЬ СВОЙ КОНФИГ FIREBASE СЮДА 👇👇👇
+    // ============================================
+    const firebaseConfig = {
+    apiKey: "AIzaSyCGVYowGZuSYKilcrsoYubOQQpFWsjeAFo",
+    authDomain: "pixelbattle-test.firebaseapp.com",
+    projectId: "pixelbattle-test",
+    storageBucket: "pixelbattle-test.firebasestorage.app",
+    messagingSenderId: "847940417426",
+    appId: "1:847940417426:web:4e83b4f1cef41de3aab34b",
+    measurementId: "G-2EKL48RDF3"
+  };
+    // ============================================
+    
+    let db, auth;
+    let currentUser = null;
+    let currentLogin = null;
+    let currentPixelCount = 0;
+    let isAdminMode = false;
+    let adminNoCooldown = false;
+    let adminNoConfirm = false;
+    let isGamePaused = false;
+    let ringEnabled = true;
+    let soundEnabled = true;
+    let isDarkTheme = true;
+    let isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    if(isMobile) document.body.classList.add('mobile');
+    
+    let bannedUsers = new Set();
+    let chatCooldown = false;
+    let playerStyles = {};
+    let userProfiles = {};
+    let chatCleanupInterval = null;
+    let topListData = [];
+    
+    try {
+        if (firebaseConfig.apiKey && firebaseConfig.apiKey !== "YOUR_API_KEY") {
+            firebase.initializeApp(firebaseConfig);
+            auth = firebase.auth();
+            db = firebase.firestore();
+            console.log('✅ Firebase подключён');
+        } else {
+            alert('⚠️ Вставь свой Firebase конфиг в код!');
+        }
+    } catch(e) { console.error(e); }
+    
+    async function clearChatMessages() {
+        if(!db) return;
+        try {
+            const messages = await db.collection('chat').get();
+            messages.forEach(doc => doc.ref.delete());
+        } catch(e) {}
+    }
+    
+    function startChatCleanup() {
+        if(chatCleanupInterval) clearInterval(chatCleanupInterval);
+        chatCleanupInterval = setInterval(() => {
+            clearChatMessages();
+            document.getElementById('chatMessages').innerHTML = '';
+        }, 5 * 60 * 1000);
+    }
+    
+    async function loadPlayerStyles() {
+        if(!db) return;
+        const snap = await db.collection('playerStyles').get();
+        playerStyles = {};
+        snap.forEach(doc => { playerStyles[doc.id] = doc.data(); });
+    }
+    
+    async function savePlayerStyle(login, styleData) {
+        if(!db) return;
+        await db.collection('playerStyles').doc(login).set(styleData, { merge: true });
+        playerStyles[login] = { ...playerStyles[login], ...styleData };
+        updateTopList();
+    }
+    
+    async function resetPlayerStyle(login) {
+        if(!db) return;
+        await db.collection('playerStyles').doc(login).delete();
+        delete playerStyles[login];
+        updateTopList();
+    }
+    
+    async function loadUserProfiles() {
+        if(!db) return;
+        const snap = await db.collection('userProfiles').get();
+        userProfiles = {};
+        snap.forEach(doc => { userProfiles[doc.id] = doc.data(); });
+    }
+    
+    async function saveUserBio(login, bio) {
+        if(!db) return;
+        await db.collection('userProfiles').doc(login).set({ bio: bio }, { merge: true });
+        userProfiles[login] = { ...userProfiles[login], bio: bio };
+    }
+    
+    function getPlayerStyle(login) {
+        return playerStyles[login] || { gradient: null, emoji: null, bg: null, border: null, rainbow: false };
+    }
+    
+    function getGradientClass(gradient) {
+        const gradients = {
+            'Бело-синий': 'gradient-white-blue',
+            'Золотой': 'gradient-gold',
+            'Розовый': 'gradient-pink',
+            'Зелёный': 'gradient-green',
+            'Фиолетовый': 'gradient-purple',
+            'Огненный': 'gradient-fire',
+            'Изумрудный': 'gradient-emerald',
+            'Лавандовый': 'gradient-lavender',
+            'Мятный': 'gradient-mint',
+            'Коралловый': 'gradient-coral',
+            'Неоновый': 'gradient-neon',
+            'Кислотный': 'gradient-acid'
+        };
+        return gradients[gradient] || '';
+    }
+    
+    function getBgClass(bg, rainbow) {
+        if(rainbow) return 'bg-rainbow';
+        const bgs = {
+            'Золотая': 'bg-gold',
+            'Серебряная': 'bg-silver',
+            'Бронзовая': 'bg-bronze',
+            'Неоновая': 'bg-neon',
+            'Кислотная': 'bg-acid',
+            'Лесная': 'bg-forest',
+            'Океанская': 'bg-ocean'
+        };
+        return bgs[bg] || '';
+    }
+    
+    function getBorderClass(border) {
+        const borders = {
+            'Золотая': 'border-gold',
+            'Неоновая': 'border-neon',
+            'Кислотная': 'border-acid',
+            'Океанская': 'border-ocean',
+            'Лесная': 'border-forest',
+            'Радужная': 'border-rainbow'
+        };
+        return borders[border] || '';
+    }
+    
+    async function sendChatMessage() {
+        if(chatCooldown) {
+            addChatMessage("⏳ Подождите 5 секунд перед следующим сообщением", true);
+            return;
+        }
+        if(!currentUser) return;
+        const banned = await isUserBanned(currentLogin);
+        if(banned) {
+            addChatMessage("⛔ Вы забанены и не можете писать в чат", true);
+            return;
+        }
+        const input = document.getElementById('chatInput');
+        const text = input.value.trim();
+        if(!text) return;
+        if(text.length > 100) {
+            addChatMessage("⚠️ Сообщение не должно превышать 100 символов", true);
+            return;
+        }
+        chatCooldown = true;
+        setTimeout(() => { chatCooldown = false; }, 5000);
+        input.value = '';
+        await db.collection('chat').add({
+            text: text,
+            login: currentLogin,
+            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        });
+    }
+    
+    function addChatMessage(text, isError = false) {
+        const container = document.getElementById('chatMessages');
+        const div = document.createElement('div');
+        div.className = 'chat-message';
+        div.style.color = isError ? '#ff8888' : '#ffffff';
+        div.innerHTML = text;
+        container.appendChild(div);
+        container.scrollTop = container.scrollHeight;
+        if(container.children.length > 100) container.removeChild(container.children[0]);
+    }
+    
+    function addChatMessageWithName(login, text) {
+        const container = document.getElementById('chatMessages');
+        const div = document.createElement('div');
+        div.className = 'chat-message';
+        const style = getPlayerStyle(login);
+        const emoji = style.emoji ? ` ${style.emoji}` : '';
+        const gradientClass = getGradientClass(style.gradient);
+        let nameHtml;
+        if(gradientClass) {
+            nameHtml = `<span class="${gradientClass}">${login}</span><span style="color: #ffffff;">${emoji}</span>`;
+        } else {
+            nameHtml = `<span style="color: #ffffff;">${login}${emoji}</span>`;
+        }
+        div.innerHTML = `${nameHtml}: ${text}`;
+        div.onclick = () => showProfile(login);
+        container.appendChild(div);
+        container.scrollTop = container.scrollHeight;
+        if(container.children.length > 100) container.removeChild(container.children[0]);
+    }
+    
+    function listenChat() {
+        if(!db) return;
+        db.collection('chat').orderBy('timestamp', 'desc').limit(1).onSnapshot(snap => {
+            snap.docChanges().forEach(change => {
+                if(change.type === 'added') {
+                    const data = change.doc.data();
+                    addChatMessageWithName(data.login, data.text);
+                }
+            });
+        });
+    }
+    
+    async function loadBans() {
+        if(!db) return;
+        const snap = await db.collection('bans').get();
+        bannedUsers.clear();
+        snap.forEach(doc => bannedUsers.add(doc.id));
+    }
+    
+    async function isUserBanned(login) {
+        if(!db) return false;
+        const doc = await db.collection('bans').doc(login).get();
+        return doc.exists;
+    }
+    
+    async function banUser(login) {
+        if(!db) return;
+        await db.collection('bans').doc(login).set({ banned: true, bannedBy: currentLogin, timestamp: Date.now() });
+        await loadBans();
+        updateTopList();
+        updateStylePanel();
+    }
+    
+    async function unbanUser(login) {
+        if(!db) return;
+        await db.collection('bans').doc(login).delete();
+        await loadBans();
+        updateTopList();
+        updateStylePanel();
+    }
+    
+    async function loadPauseState() {
+        if(!db) return;
+        const doc = await db.collection('gameState').doc('pause').get();
+        if(doc.exists) isGamePaused = doc.data().paused || false;
+        else isGamePaused = false;
+        updatePauseButton();
+    }
+    
+    async function setPauseState(paused) {
+        if(!db) return;
+        isGamePaused = paused;
+        await db.collection('gameState').doc('pause').set({ paused: paused });
+        updatePauseButton();
+    }
+    
+    function updatePauseButton() {
+        const btn = document.getElementById('adminPauseBtn');
+        if(btn) btn.innerHTML = isGamePaused ? '▶️ СТАРТ' : '⏸️ ПАУЗА';
+    }
+    
+    async function checkLoginAttempts(login) {
+        if(!db) return { blocked: false };
+        const doc = await db.collection('loginAttempts').doc(login).get();
+        if(doc.exists) {
+            const data = doc.data();
+            if(data.blockedUntil && data.blockedUntil > Date.now()) {
+                return { blocked: true, remaining: Math.ceil((data.blockedUntil - Date.now()) / 60000) };
+            }
+        }
+        return { blocked: false };
+    }
+    
+    async function registerLoginAttempt(login, success) {
+        if(!db) return;
+        const docRef = db.collection('loginAttempts').doc(login);
+        const doc = await docRef.get();
+        let attempts = 1;
+        if(doc.exists) {
+            const data = doc.data();
+            if(data.blockedUntil && data.blockedUntil > Date.now()) return;
+            attempts = (data.attempts || 0) + 1;
+        }
+        if(!success && attempts >= 5) {
+            await docRef.set({ attempts: 0, blockedUntil: Date.now() + 5 * 60 * 1000 });
+            return { blocked: true };
+        } else if(!success) {
+            await docRef.set({ attempts: attempts });
+        } else {
+            await docRef.delete();
+        }
+        return { blocked: false };
+    }
+    
+    async function getUserRank(login) {
+        if(!db) return null;
+        const users = await db.collection('users').orderBy('pixels', 'desc').get();
+        let rank = 1;
+        for(const doc of users.docs) {
+            if(doc.data().login === login) return rank;
+            rank++;
+        }
+        return null;
+    }
+    
+    async function showProfile(login) {
+        const userData = await db.collection('users').where('login', '==', login).get();
+        if(userData.empty) return;
+        const pixels = userData.docs[0].data().pixels || 0;
+        const rank = await getUserRank(login);
+        const style = getPlayerStyle(login);
+        const emoji = style.emoji ? ` ${style.emoji}` : '';
+        const gradientClass = getGradientClass(style.gradient);
+        const borderClass = getBorderClass(style.border);
+        const isBanned = await isUserBanned(login);
+        const profile = userProfiles[login] || { bio: '' };
+        
+        let nameHtml;
+        if(gradientClass) {
+            nameHtml = `<span class="${gradientClass}">${login}</span>${emoji}`;
+        } else {
+            nameHtml = `<span style="color: #ffffff;">${login}</span>${emoji}`;
+        }
+        
+        const isOwnProfile = (currentLogin === login);
+        const canEdit = !isBanned && isOwnProfile;
+        
+        const panel = document.getElementById('profilePanel');
+        const content = document.getElementById('profileContent');
+        content.innerHTML = `
+            <div class="profile-rank">📍 Место в топе: #${rank !== null ? rank : '?'}</div>
+            <div class="profile-name">${nameHtml}</div>
+            <div class="profile-pixels">🎨 Пикселей: ${pixels}</div>
+            ${isBanned ? '<div class="profile-banned">🚫 Забанен</div>' : ''}
+            <div class="profile-bio" id="profileBioDisplay">${profile.bio || 'Нет описания'}</div>
+            ${canEdit ? `
+                <textarea id="profileBioEdit" class="profile-bio-edit" rows="3" maxlength="200" placeholder="Введите описание профиля (до 200 символов)...">${profile.bio || ''}</textarea>
+                <button id="profileSaveBtn" class="profile-edit-btn">💾 СОХРАНИТЬ</button>
+            ` : ''}
+        `;
+        
+        if(canEdit) {
+            document.getElementById('profileSaveBtn').onclick = async () => {
+                const newBio = document.getElementById('profileBioEdit').value.trim();
+                if(newBio.length > 200) return;
+                await saveUserBio(login, newBio);
+                showProfile(login);
+            };
+        }
+        
+        if(borderClass) {
+            panel.classList.add(borderClass);
+        } else {
+            panel.classList.remove('border-gold', 'border-neon', 'border-acid', 'border-ocean', 'border-forest', 'border-rainbow');
+        }
+        
+        panel.classList.add('show');
+    }
+    
+    async function updateTopList() {
+        if(!db) return;
+        const container = document.getElementById('topList');
+        if(!container) return;
+        try {
+            const users = await db.collection('users').orderBy('pixels', 'desc').limit(20).get();
+            if(users.empty) {
+                container.innerHTML = '<div style="text-align: center; padding: 20px;">Нет игроков</div>';
+                return;
+            }
+            topListData = [];
+            let html = '';
+            let rank = 1;
+            for(const doc of users.docs) {
+                const data = doc.data();
+                const login = data.login;
+                topListData.push(login);
+                const style = getPlayerStyle(login);
+                const emoji = style.emoji ? ` ${style.emoji}` : '';
+                const gradientClass = getGradientClass(style.gradient);
+                const bgClass = getBgClass(style.bg, style.rainbow);
+                const borderClass = getBorderClass(style.border);
+                let nameHtml;
+                if(gradientClass) {
+                    nameHtml = `<span class="${gradientClass}">${login}</span><span style="color: #ffffff;">${emoji}</span>`;
+                } else {
+                    nameHtml = `<span style="color: #ffffff;">${login}${emoji}</span>`;
+                }
+                const borderStyle = borderClass ? `class="top-name-wrapper ${borderClass}"` : `class="top-name-wrapper"`;
+                html += `
+                    <div class="top-item ${bgClass}" data-login="${login}">
+                        <span class="top-rank">#${rank}</span>
+                        <div ${borderStyle}>${nameHtml}</div>
+                        <span class="top-pixels">${data.pixels || 0}</span>
+                    </div>
+                `;
+                rank++;
+            }
+            container.innerHTML = html;
+            document.querySelectorAll('.top-item').forEach(item => {
+                const login = item.dataset.login;
+                if(login) {
+                    item.onclick = () => showProfile(login);
+                }
+            });
+        } catch(e) {
+            container.innerHTML = '<div style="text-align: center; padding: 20px;">Ошибка загрузки</div>';
+        }
+    }
+    
+    async function updateStylePanel() {
+        if(!db) return;
+        const container = document.getElementById('styleList');
+        if(!container) return;
+        const users = await db.collection('users').orderBy('pixels', 'desc').get();
+        if(users.empty) {
+            container.innerHTML = '<div style="text-align: center; padding: 20px;">Нет игроков</div>';
+            return;
+        }
+        let html = '';
+        for(const doc of users.docs) {
+            const login = doc.data().login;
+            const style = getPlayerStyle(login);
+            const rainbowChecked = style.rainbow ? 'active' : '';
+            const rainbowMark = style.rainbow ? '✅' : '☐';
+            const isBanned = await isUserBanned(login);
+            html += `
+                <div class="style-player" data-login="${login}">
+                    <div class="style-player-name">${login} (${doc.data().pixels || 0})</div>
+                    <div class="style-row">
+                        <select class="style-select gradient-select" data-login="${login}">
+                            <option value="None" ${!style.gradient ? 'selected' : ''}>None</option>
+                            <option value="Бело-синий" ${style.gradient === 'Бело-синий' ? 'selected' : ''}>Бело-синий</option>
+                            <option value="Золотой" ${style.gradient === 'Золотой' ? 'selected' : ''}>Золотой</option>
+                            <option value="Розовый" ${style.gradient === 'Розовый' ? 'selected' : ''}>Розовый</option>
+                            <option value="Зелёный" ${style.gradient === 'Зелёный' ? 'selected' : ''}>Зелёный</option>
+                            <option value="Фиолетовый" ${style.gradient === 'Фиолетовый' ? 'selected' : ''}>Фиолетовый</option>
+                            <option value="Огненный" ${style.gradient === 'Огненный' ? 'selected' : ''}>Огненный</option>
+                            <option value="Изумрудный" ${style.gradient === 'Изумрудный' ? 'selected' : ''}>Изумрудный</option>
+                            <option value="Лавандовый" ${style.gradient === 'Лавандовый' ? 'selected' : ''}>Лавандовый</option>
+                            <option value="Мятный" ${style.gradient === 'Мятный' ? 'selected' : ''}>Мятный</option>
+                            <option value="Коралловый" ${style.gradient === 'Коралловый' ? 'selected' : ''}>Коралловый</option>
+                            <option value="Неоновый" ${style.gradient === 'Неоновый' ? 'selected' : ''}>Неоновый</option>
+                            <option value="Кислотный" ${style.gradient === 'Кислотный' ? 'selected' : ''}>Кислотный</option>
+                        </select>
+                        <select class="style-select emoji-select" data-login="${login}">
+                            <option value="None" ${!style.emoji ? 'selected' : ''}>None</option>
+                            <option value="⭐" ${style.emoji === '⭐' ? 'selected' : ''}>⭐</option>
+                            <option value="🔥" ${style.emoji === '🔥' ? 'selected' : ''}>🔥</option>
+                            <option value="💎" ${style.emoji === '💎' ? 'selected' : ''}>💎</option>
+                            <option value="🎨" ${style.emoji === '🎨' ? 'selected' : ''}>🎨</option>
+                            <option value="🏆" ${style.emoji === '🏆' ? 'selected' : ''}>🏆</option>
+                            <option value="💸" ${style.emoji === '💸' ? 'selected' : ''}>💸</option>
+                            <option value="🛠️" ${style.emoji === '🛠️' ? 'selected' : ''}>🛠️</option>
+                            <option value="😎" ${style.emoji === '😎' ? 'selected' : ''}>😎</option>
+                            <option value="👑" ${style.emoji === '👑' ? 'selected' : ''}>👑</option>
+                            <option value="🤖" ${style.emoji === '🤖' ? 'selected' : ''}>🤖</option>
+                            <option value="👾" ${style.emoji === '👾' ? 'selected' : ''}>👾</option>
+                            <option value="💀" ${style.emoji === '💀' ? 'selected' : ''}>💀</option>
+                            <option value="❤️" ${style.emoji === '❤️' ? 'selected' : ''}>❤️</option>
+                            <option value="💙" ${style.emoji === '💙' ? 'selected' : ''}>💙</option>
+                            <option value="💚" ${style.emoji === '💚' ? 'selected' : ''}>💚</option>
+                            <option value="💛" ${style.emoji === '💛' ? 'selected' : ''}>💛</option>
+                        </select>
+                        <select class="style-select bg-select" data-login="${login}">
+                            <option value="None" ${!style.bg ? 'selected' : ''}>None</option>
+                            <option value="Золотая" ${style.bg === 'Золотая' ? 'selected' : ''}>Золотая</option>
+                            <option value="Серебряная" ${style.bg === 'Серебряная' ? 'selected' : ''}>Серебряная</option>
+                            <option value="Бронзовая" ${style.bg === 'Бронзовая' ? 'selected' : ''}>Бронзовая</option>
+                            <option value="Неоновая" ${style.bg === 'Неоновая' ? 'selected' : ''}>Неоновая</option>
+                            <option value="Кислотная" ${style.bg === 'Кислотная' ? 'selected' : ''}>Кислотная</option>
+                            <option value="Лесная" ${style.bg === 'Лесная' ? 'selected' : ''}>Лесная</option>
+                            <option value="Океанская" ${style.bg === 'Океанская' ? 'selected' : ''}>Океанская</option>
+                        </select>
+                        <select class="style-select border-select" data-login="${login}">
+                            <option value="None" ${!style.border ? 'selected' : ''}>None</option>
+                            <option value="Золотая" ${style.border === 'Золотая' ? 'selected' : ''}>Золотая</option>
+                            <option value="Неоновая" ${style.border === 'Неоновая' ? 'selected' : ''}>Неоновая</option>
+                            <option value="Кислотная" ${style.border === 'Кислотная' ? 'selected' : ''}>Кислотная</option>
+                            <option value="Океанская" ${style.border === 'Океанская' ? 'selected' : ''}>Океанская</option>
+                            <option value="Лесная" ${style.border === 'Лесная' ? 'selected' : ''}>Лесная</option>
+                            <option value="Радужная" ${style.border === 'Радужная' ? 'selected' : ''}>Радужная</option>
+                        </select>
+                        <button class="rainbow-checkbox ${rainbowChecked}" data-login="${login}">🌈 ${rainbowMark}</button>
+                        ${isBanned ? 
+                            `<button class="unban-btn" data-login="${login}">✅ РАЗБАН</button>` : 
+                            `<button class="ban-btn" data-login="${login}">🔨 БАН</button>`
+                        }
+                    </div>
+                </div>
+            `;
+        }
+        container.innerHTML = html;
+        
+        document.querySelectorAll('.gradient-select').forEach(select => {
+            select.onchange = async (e) => {
+                const login = select.dataset.login;
+                const value = select.value === 'None' ? null : select.value;
+                await savePlayerStyle(login, { gradient: value });
+                updateStylePanel();
+                updateTopList();
+            };
+        });
+        document.querySelectorAll('.emoji-select').forEach(select => {
+            select.onchange = async (e) => {
+                const login = select.dataset.login;
+                const value = select.value === 'None' ? null : select.value;
+                await savePlayerStyle(login, { emoji: value });
+                updateStylePanel();
+                updateTopList();
+            };
+        });
+        document.querySelectorAll('.bg-select').forEach(select => {
+            select.onchange = async (e) => {
+                const login = select.dataset.login;
+                const value = select.value === 'None' ? null : select.value;
+                await savePlayerStyle(login, { bg: value, rainbow: false });
+                updateStylePanel();
+                updateTopList();
+            };
+        });
+        document.querySelectorAll('.border-select').forEach(select => {
+            select.onchange = async (e) => {
+                const login = select.dataset.login;
+                const value = select.value === 'None' ? null : select.value;
+                await savePlayerStyle(login, { border: value });
+                updateStylePanel();
+                updateTopList();
+            };
+        });
+        document.querySelectorAll('.rainbow-checkbox').forEach(btn => {
+            btn.onclick = async (e) => {
+                const login = btn.dataset.login;
+                const style = getPlayerStyle(login);
+                const newRainbow = !style.rainbow;
+                await savePlayerStyle(login, { rainbow: newRainbow, bg: newRainbow ? null : style.bg });
+                updateStylePanel();
+                updateTopList();
+            };
+        });
+        document.querySelectorAll('.ban-btn').forEach(btn => {
+            btn.onclick = async (e) => {
+                const login = btn.dataset.login;
+                await banUser(login);
+                updateStylePanel();
+                updateTopList();
+            };
+        });
+        document.querySelectorAll('.unban-btn').forEach(btn => {
+            btn.onclick = async (e) => {
+                const login = btn.dataset.login;
+                await unbanUser(login);
+                updateStylePanel();
+                updateTopList();
+            };
+        });
+    }
+    
+    function showAuthModal() {
+        const modal = document.createElement('div');
+        modal.className = 'auth-overlay';
+        modal.id = 'authModal';
+        modal.innerHTML = `
+            <div class="auth-box">
+                <h2>⚔️ PIXEL BATTLE ⚔️</h2>
+                <input type="text" id="authLogin" placeholder="Логин" autocomplete="username">
+                <div class="password-wrapper">
+                    <input type="password" id="authPassword" placeholder="Пароль" autocomplete="current-password">
+                    <button class="toggle-password" id="togglePasswordBtn">👁️</button>
+                </div>
+                <div style="display: flex; gap: 10px; justify-content: center; margin-top: 10px;">
+                    <button id="loginBtn">ВОЙТИ</button>
+                    <button id="registerBtn">ЗАРЕГИСТРИРОВАТЬСЯ</button>
+                </div>
+                <div id="authError" class="auth-error"></div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+        
+        document.getElementById('togglePasswordBtn').onclick = () => {
+            const input = document.getElementById('authPassword');
+            input.type = input.type === 'password' ? 'text' : 'password';
+        };
+        
+        let registerCooldown = false;
+        
+        document.getElementById('loginBtn').onclick = async () => {
+            const login = document.getElementById('authLogin').value.trim();
+            const password = document.getElementById('authPassword').value;
+            const errorDiv = document.getElementById('authError');
+            if(!login || !password) { errorDiv.innerText = 'Заполните все поля'; return; }
+            const check = await checkLoginAttempts(login);
+            if(check.blocked) { errorDiv.innerText = `Слишком много попыток. Подождите ${check.remaining} минут`; return; }
+            const btn = document.getElementById('loginBtn');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '⏳ ВХОД...';
+            btn.disabled = true;
+            try {
+                const fakeEmail = `${login}@pixelbattle.local`;
+                const userCred = await auth.signInWithEmailAndPassword(fakeEmail, password);
+                await registerLoginAttempt(login, true);
+                const banned = await isUserBanned(login);
+                if(banned) {
+                    await auth.signOut();
+                    errorDiv.innerText = 'Вы забанены!';
+                    btn.innerHTML = originalText;
+                    btn.disabled = false;
+                    return;
+                }
+                const userDoc = await db.collection('users').doc(userCred.user.uid).get();
+                if(userDoc.exists) {
+                    currentPixelCount = userDoc.data().pixels || 0;
+                } else {
+                    await db.collection('users').doc(userCred.user.uid).set({ login: login, pixels: 0 });
+                    currentPixelCount = 0;
+                }
+                currentUser = userCred.user;
+                currentLogin = login;
+                modal.remove();
+                initGame();
+            } catch(e) {
+                await registerLoginAttempt(login, false);
+                errorDiv.innerText = e.code === 'auth/user-not-found' ? 'Пользователь не найден' : 
+                                    (e.code === 'auth/wrong-password' ? 'Неверный пароль' : 'Ошибка: ' + e.message);
+            } finally {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        };
+        
+        document.getElementById('registerBtn').onclick = async () => {
+            if(registerCooldown) {
+                errorDiv.innerText = 'Подождите 30 секунд перед повторной регистрацией';
+                return;
+            }
+            const login = document.getElementById('authLogin').value.trim();
+            const password = document.getElementById('authPassword').value;
+            const errorDiv = document.getElementById('authError');
+            if(!login || !password) { errorDiv.innerText = 'Заполните все поля'; return; }
+            if(password.length < 4) { errorDiv.innerText = 'Пароль должен быть минимум 4 символа'; return; }
+            registerCooldown = true;
+            const btn = document.getElementById('registerBtn');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '⏳ ПОДОЖДИТЕ...';
+            btn.disabled = true;
+            setTimeout(() => {
+                registerCooldown = false;
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }, 30000);
+            try {
+                const existingUsers = await db.collection('users').where('login', '==', login).get();
+                if(!existingUsers.empty) { errorDiv.innerText = 'Логин уже занят'; return; }
+                const fakeEmail = `${login}@pixelbattle.local`;
+                try {
+                    const methods = await auth.fetchSignInMethodsForEmail(fakeEmail);
+                    if(methods.length > 0) { errorDiv.innerText = 'Логин уже занят'; return; }
+                } catch(e) {}
+                const userCred = await auth.createUserWithEmailAndPassword(fakeEmail, password);
+                await db.collection('users').doc(userCred.user.uid).set({ login: login, pixels: 0 });
+                currentUser = userCred.user;
+                currentLogin = login;
+                currentPixelCount = 0;
+                modal.remove();
+                initGame();
+            } catch(e) {
+                errorDiv.innerText = 'Ошибка: ' + e.message;
+                registerCooldown = false;
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        };
+    }
+    
+    const canvas = document.getElementById('pixelCanvas');
+    const ctx = canvas.getContext('2d');
+    const GRID_W = 150, GRID_H = 150, CELL_SIZE = 10;
+    canvas.width = GRID_W * CELL_SIZE;
+    canvas.height = GRID_H * CELL_SIZE;
+    
+    let pixels = Array(GRID_H).fill().map(() => Array(GRID_W).fill('#F5F9FF'));
+    let currentColor = '#000000';
+    let pipetteMode = false;
+    let showGrid = true;
+    let isOnCooldown = false;
+    let lastPixelTime = 0;
+    let cooldownTimer = null;
+    const COOLDOWN_MS = 5000;
+    let lastErrorSoundTime = 0;
+    const CACHE_KEY = 'pixelBattleCache';
+    const CACHE_TIME_KEY = 'pixelBattleCacheTime';
+    const CACHE_DURATION = 5 * 60 * 1000;
+    
+    function playSound(freq, isError = false) {
+        if(!soundEnabled) return;
+        if(isError) {
+            const now = Date.now();
+            if(now - lastErrorSoundTime < 500) return;
+            lastErrorSoundTime = now;
+        }
+        try {
+            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.frequency.value = freq;
+            gain.gain.value = isError ? 0.12 : 0.15;
+            osc.start();
+            gain.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + 0.2);
+            osc.stop(audioCtx.currentTime + 0.2);
+        } catch(e) {}
+    }
+    
+    function renderCanvas() {
+        for(let y=0; y<GRID_H; y++) {
+            for(let x=0; x<GRID_W; x++) {
+                ctx.fillStyle = pixels[y][x];
+                ctx.fillRect(x*CELL_SIZE, y*CELL_SIZE, CELL_SIZE, CELL_SIZE);
+            }
+        }
+        if(showGrid) {
+            ctx.beginPath();
+            ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+            ctx.lineWidth = 0.5;
+            for(let i=0; i<=GRID_W; i++) { ctx.beginPath(); ctx.moveTo(i*CELL_SIZE,0); ctx.lineTo(i*CELL_SIZE,canvas.height); ctx.stroke(); }
+            for(let i=0; i<=GRID_H; i++) { ctx.beginPath(); ctx.moveTo(0,i*CELL_SIZE); ctx.lineTo(canvas.width,i*CELL_SIZE); ctx.stroke(); }
+        }
+    }
+    
+    function saveToCache() {
+        try {
+            localStorage.setItem(CACHE_KEY, JSON.stringify({ pixels: pixels, version: 1 }));
+            localStorage.setItem(CACHE_TIME_KEY, Date.now().toString());
+        } catch(e) {}
+    }
+    
+    function loadFromCache() {
+        try {
+            const cacheTime = localStorage.getItem(CACHE_TIME_KEY);
+            if(!cacheTime) return false;
+            if(Date.now() - parseInt(cacheTime) > CACHE_DURATION) return false;
+            const data = JSON.parse(localStorage.getItem(CACHE_KEY));
+            if(data && data.version === 1 && data.pixels) {
+                pixels = data.pixels;
+                renderCanvas();
+                return true;
+            }
+        } catch(e) {}
+        return false;
+    }
+    
+    async function loadPixelsOptimized() {
+        if(!db) return;
+        if(loadFromCache()) return;
+        try {
+            const snap = await db.collection('pixels').get();
+            snap.forEach(doc => {
+                const [x,y] = doc.id.split('_').map(Number);
+                if(x>=0 && x<GRID_W && y>=0 && y<GRID_H) pixels[y][x] = doc.data().color;
+            });
+            renderCanvas();
+            saveToCache();
+        } catch(e) { console.error(e); }
+    }
+    
+    function listenChangesOptimized() {
+        if(!db) return;
+        db.collection('pixels').onSnapshot(snap => {
+            snap.docChanges().forEach(change => {
+                if(change.type === 'modified' || change.type === 'added') {
+                    const [x,y] = change.doc.id.split('_').map(Number);
+                    const color = change.doc.data().color;
+                    if(x>=0 && x<GRID_W && y>=0 && y<GRID_H && Date.now() - lastPixelTime > 500) {
+                        pixels[y][x] = color;
+                        ctx.fillStyle = color;
+                        ctx.fillRect(x*CELL_SIZE, y*CELL_SIZE, CELL_SIZE, CELL_SIZE);
+                        if(showGrid) {
+                            ctx.beginPath();
+                            ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+                            ctx.lineWidth = 0.5;
+                            ctx.beginPath(); ctx.moveTo(x*CELL_SIZE, y*CELL_SIZE); ctx.lineTo(x*CELL_SIZE, (y+1)*CELL_SIZE); ctx.stroke();
+                            ctx.beginPath(); ctx.moveTo((x+1)*CELL_SIZE, y*CELL_SIZE); ctx.lineTo((x+1)*CELL_SIZE, (y+1)*CELL_SIZE); ctx.stroke();
+                            ctx.beginPath(); ctx.moveTo(x*CELL_SIZE, y*CELL_SIZE); ctx.lineTo((x+1)*CELL_SIZE, y*CELL_SIZE); ctx.stroke();
+                            ctx.beginPath(); ctx.moveTo(x*CELL_SIZE, (y+1)*CELL_SIZE); ctx.lineTo((x+1)*CELL_SIZE, (y+1)*CELL_SIZE); ctx.stroke();
+                        }
+                    }
+                }
+            });
+        });
+    }
+    
+    function updateProgressBar() {
+        const fill = document.getElementById('progressFill');
+        const label = document.getElementById('cooldownLabel');
+        if(adminNoCooldown && isAdminMode) {
+            fill.style.width = '100%';
+            label.innerHTML = '⚡ БЕЗ КД';
+            return;
+        }
+        if(!isOnCooldown) {
+            fill.style.width = '100%';
+            label.innerHTML = '✅ ГОТОВ';
+        } else {
+            const remaining = Math.max(0, COOLDOWN_MS - (Date.now() - lastPixelTime));
+            fill.style.width = (remaining/COOLDOWN_MS)*100 + '%';
+            label.innerHTML = `⏰ ${Math.ceil(remaining/1000)} сек`;
+        }
+    }
+    
+    function startCooldown() {
+        if(adminNoCooldown && isAdminMode) return;
+        if(cooldownTimer) clearInterval(cooldownTimer);
+        isOnCooldown = true;
+        updateProgressBar();
+        const remaining = Math.max(0, COOLDOWN_MS - (Date.now() - lastPixelTime));
+        const ring = document.getElementById('cooldownRing');
+        const circle = document.getElementById('cooldownCircle');
+        const secondsSpan = document.getElementById('cooldownSeconds');
+        if(ringEnabled) {
+            ring.style.display = 'flex';
+            const total = COOLDOWN_MS;
+            const percent = remaining / total;
+            circle.style.strokeDashoffset = 188.5 * (1 - percent);
+            secondsSpan.textContent = Math.ceil(remaining / 1000);
+        }
+        cooldownTimer = setInterval(() => {
+            if(Date.now() - lastPixelTime >= COOLDOWN_MS) {
+                isOnCooldown = false;
+                updateProgressBar();
+                clearInterval(cooldownTimer);
+                cooldownTimer = null;
+                document.getElementById('cooldownRing').style.display = 'none';
+                playSound(880);
+            } else {
+                updateProgressBar();
+                if(ringEnabled) {
+                    const newRemaining = Math.max(0, COOLDOWN_MS - (Date.now() - lastPixelTime));
+                    circle.style.strokeDashoffset = 188.5 * (1 - (newRemaining / COOLDOWN_MS));
+                    secondsSpan.textContent = Math.ceil(newRemaining / 1000);
+                }
+            }
+        }, 100);
+    }
+    
+    function animatePixel(x, y, color) {
+        const pixelDiv = document.createElement('div');
+        const rect = wrapper.getBoundingClientRect();
+        pixelDiv.style.position = 'fixed';
+        pixelDiv.style.left = (rect.left + tx + x * CELL_SIZE * scale) + 'px';
+        pixelDiv.style.top = (rect.top + ty + y * CELL_SIZE * scale) + 'px';
+        pixelDiv.style.width = (CELL_SIZE * scale) + 'px';
+        pixelDiv.style.height = (CELL_SIZE * scale) + 'px';
+        pixelDiv.style.backgroundColor = color;
+        pixelDiv.style.zIndex = '1000';
+        pixelDiv.style.pointerEvents = 'none';
+        pixelDiv.style.borderRadius = '2px';
+        pixelDiv.classList.add('pulse-animation');
+        document.body.appendChild(pixelDiv);
+        setTimeout(() => pixelDiv.remove(), 200);
+    }
+    
+    async function setPixelDirect(x, y, color, fromServer = false) {
+        if(x<0 || x>=GRID_W || y<0 || y>=GRID_H) return false;
+        const banned = await isUserBanned(currentLogin);
+        if(banned && !isAdminMode) {
+            showTempMessage('⛔ Вы забанены!', true);
+            return false;
+        }
+        if(isGamePaused && !isAdminMode) {
+            showTempMessage('⏸️ Игра на паузе!', true);
+            return false;
+        }
+        const cooldownActive = !(adminNoCooldown && isAdminMode);
+        if(!fromServer && cooldownActive && isOnCooldown) { playSound(440, true); return false; }
+        pixels[y][x] = color;
+        ctx.fillStyle = color;
+        ctx.fillRect(x*CELL_SIZE, y*CELL_SIZE, CELL_SIZE, CELL_SIZE);
+        if(showGrid) {
+            ctx.beginPath();
+            ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+            ctx.lineWidth = 0.5;
+            ctx.beginPath(); ctx.moveTo(x*CELL_SIZE, y*CELL_SIZE); ctx.lineTo(x*CELL_SIZE, (y+1)*CELL_SIZE); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo((x+1)*CELL_SIZE, y*CELL_SIZE); ctx.lineTo((x+1)*CELL_SIZE, (y+1)*CELL_SIZE); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(x*CELL_SIZE, y*CELL_SIZE); ctx.lineTo((x+1)*CELL_SIZE, y*CELL_SIZE); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(x*CELL_SIZE, (y+1)*CELL_SIZE); ctx.lineTo((x+1)*CELL_SIZE, (y+1)*CELL_SIZE); ctx.stroke();
+        }
+        if(!fromServer) {
+            playSound(660);
+            animatePixel(x, y, color);
+            lastPixelTime = Date.now();
+            startCooldown();
+            if(db) {
+                await db.collection('pixels').doc(`${x}_${y}`).set({ color: color });
+                currentPixelCount++;
+                await db.collection('users').doc(currentUser.uid).update({
+                    pixels: firebase.firestore.FieldValue.increment(1)
+                });
+                document.getElementById('userInfo').innerHTML = `👤 ${currentLogin} (${currentPixelCount})`;
+                updateTopList();
+            }
+            saveToCache();
+        }
+        return true;
+    }
+    
+    let pendingPixel = null;
+    let outlineDiv = null;
+    let confirmTimeout = null;
+    
+    function showConfirmPanel(x, y, color) {
+        if(adminNoConfirm && isAdminMode) {
+            setPixelDirect(x, y, color, false);
+            return;
+        }
+        if(isOnCooldown && !(adminNoCooldown && isAdminMode)) { playSound(440, true); return; }
+        if(outlineDiv) outlineDiv.remove();
+        pendingPixel = { x, y, color };
+        const rect = wrapper.getBoundingClientRect();
+        outlineDiv = document.createElement('div');
+        outlineDiv.className = 'pixel-outline';
+        outlineDiv.style.left = (rect.left + tx + x * CELL_SIZE * scale) + 'px';
+        outlineDiv.style.top = (rect.top + ty + y * CELL_SIZE * scale) + 'px';
+        outlineDiv.style.width = (CELL_SIZE * scale) + 'px';
+        outlineDiv.style.height = (CELL_SIZE * scale) + 'px';
+        document.body.appendChild(outlineDiv);
+        document.getElementById('confirmPanel').classList.add('show');
+        if(confirmTimeout) clearTimeout(confirmTimeout);
+        confirmTimeout = setTimeout(() => hideConfirmPanel(), 3000);
+    }
+    
+    function hideConfirmPanel() {
+        if(outlineDiv) { outlineDiv.remove(); outlineDiv = null; }
+        pendingPixel = null;
+        document.getElementById('confirmPanel').classList.remove('show');
+        if(confirmTimeout) { clearTimeout(confirmTimeout); confirmTimeout = null; }
+    }
+    
+    function confirmPlacePixel() {
+        if(pendingPixel) setPixelDirect(pendingPixel.x, pendingPixel.y, pendingPixel.color, false);
+        hideConfirmPanel();
+    }
+    
+    const viewport = document.getElementById('viewport');
+    const wrapper = document.getElementById('canvasWrapper');
+    let scale = 1, tx = 0, ty = 0;
+    let isPanning = false;
+    let panStart = { x: 0, y: 0 };
+    let panStartTX = 0, panStartTY = 0;
+    let initialPinchDist = 0, initialScale = 1, isPinching = false, pinchCenter = null;
+    
+    function updateTransform() {
+        viewport.style.transform = `translate(${tx}px, ${ty}px) scale(${scale})`;
+        if(pendingPixel && outlineDiv) {
+            const rect = wrapper.getBoundingClientRect();
+            outlineDiv.style.left = (rect.left + tx + pendingPixel.x * CELL_SIZE * scale) + 'px';
+            outlineDiv.style.top = (rect.top + ty + pendingPixel.y * CELL_SIZE * scale) + 'px';
+            outlineDiv.style.width = (CELL_SIZE * scale) + 'px';
+            outlineDiv.style.height = (CELL_SIZE * scale) + 'px';
+        }
+    }
+    
+    function centerCanvas() {
+        const rect = wrapper.getBoundingClientRect();
+        scale = 1;
+        tx = (rect.width - canvas.width) / 2;
+        ty = (rect.height - canvas.height) / 2;
+        updateTransform();
+    }
+    
+    function screenToGrid(clientX, clientY) {
+        const rect = wrapper.getBoundingClientRect();
+        let canvasX = (clientX - rect.left - tx) / scale;
+        let canvasY = (clientY - rect.top - ty) / scale;
+        canvasX = Math.min(Math.max(0, canvasX), canvas.width);
+        canvasY = Math.min(Math.max(0, canvasY), canvas.height);
+        return { x: Math.floor(canvasX / CELL_SIZE), y: Math.floor(canvasY / CELL_SIZE) };
+    }
+    
+    function handlePixelClick(gridX, gridY) {
+        if(gridX < 0 || gridX >= GRID_W || gridY < 0 || gridY >= GRID_H) return;
+        if(pipetteMode) {
+            currentColor = pixels[gridY][gridX];
+            document.getElementById('colorPicker').value = currentColor;
+            pipetteMode = false;
+            updateModeUI();
+            hideConfirmPanel();
+            return;
+        }
+        if(isOnCooldown && !(adminNoCooldown && isAdminMode)) { playSound(440, true); return; }
+        showConfirmPanel(gridX, gridY, currentColor);
+    }
+    
+    let touchStartX = 0, touchStartY = 0;
+    let hasMoved = false;
+    let touchTimerId = null;
+    
+    function onTouchStart(e) {
+        e.preventDefault();
+        const touches = e.touches;
+        if(touches.length === 2) {
+            if(touchTimerId) clearTimeout(touchTimerId);
+            isPinching = true;
+            initialPinchDist = Math.hypot(touches[0].clientX - touches[1].clientX, touches[0].clientY - touches[1].clientY);
+            initialScale = scale;
+            const center = { x: (touches[0].clientX + touches[1].clientX)/2, y: (touches[0].clientY + touches[1].clientY)/2 };
+            const rect = wrapper.getBoundingClientRect();
+            const cx = center.x - rect.left, cy = center.y - rect.top;
+            pinchCenter = { cx, cy, canvasXBefore: (cx - tx) / scale, canvasYBefore: (cy - ty) / scale };
+            return;
+        }
+        if(touches.length === 1 && !isPinching) {
+            const touch = touches[0];
+            touchStartX = touch.clientX;
+            touchStartY = touch.clientY;
+            hasMoved = false;
+            if(touchTimerId) clearTimeout(touchTimerId);
+            touchTimerId = setTimeout(() => {
+                if(!hasMoved) {
+                    const pos = screenToGrid(touchStartX, touchStartY);
+                    if(pos.x >= 0 && pos.x < GRID_W && pos.y >= 0 && pos.y < GRID_H) handlePixelClick(pos.x, pos.y);
+                }
+                touchTimerId = null;
+            }, 100);
+        }
+    }
+    
+    function onTouchMove(e) {
+        e.preventDefault();
+        const touches = e.touches;
+        if(touches.length === 2 && isPinching && pinchCenter) {
+            if(touchTimerId) clearTimeout(touchTimerId);
+            const newDist = Math.hypot(touches[0].clientX - touches[1].clientX, touches[0].clientY - touches[1].clientY);
+            let ns = initialScale * (newDist / initialPinchDist);
+            ns = Math.min(Math.max(0.3, ns), 4);
+            if(ns !== scale) {
+                const { canvasXBefore, canvasYBefore, cx, cy } = pinchCenter;
+                scale = ns;
+                tx = cx - canvasXBefore * scale;
+                ty = cy - canvasYBefore * scale;
+                updateTransform();
+            }
+            const center = { x: (touches[0].clientX + touches[1].clientX)/2, y: (touches[0].clientY + touches[1].clientY)/2 };
+            const rect = wrapper.getBoundingClientRect();
+            const cx = center.x - rect.left, cy = center.y - rect.top;
+            pinchCenter = { cx, cy, canvasXBefore: (cx - tx) / scale, canvasYBefore: (cy - ty) / scale };
+            initialScale = scale;
+            initialPinchDist = newDist;
+            return;
+        }
+        if(touches.length === 1 && !isPinching) {
+            const touch = touches[0];
+            const dx = Math.abs(touch.clientX - touchStartX);
+            const dy = Math.abs(touch.clientY - touchStartY);
+            if(dx > 10 || dy > 10) {
+                if(touchTimerId) clearTimeout(touchTimerId);
+                if(!hasMoved) { hasMoved = true; hideConfirmPanel(); }
+                tx += touch.clientX - touchStartX;
+                ty += touch.clientY - touchStartY;
+                touchStartX = touch.clientX;
+                touchStartY = touch.clientY;
+                updateTransform();
+            }
+        }
+    }
+    
+    function onTouchEnd(e) {
+        e.preventDefault();
+        if(e.touches.length < 2) { isPinching = false; pinchCenter = null; }
+        if(e.touches.length === 0) { if(touchTimerId) clearTimeout(touchTimerId); touchTimerId = null; hasMoved = false; }
+    }
+    
+    function onMouseDown(e) {
+        if(e.button !== 0) return;
+        e.preventDefault();
+        const pos = screenToGrid(e.clientX, e.clientY);
+        if(pos.x >= 0 && pos.x < GRID_W && pos.y >= 0 && pos.y < GRID_H) handlePixelClick(pos.x, pos.y);
+    }
+    
+    function onMouseMove(e) {
+        const pos = screenToGrid(e.clientX, e.clientY);
+        if(pos.x >= 0 && pos.x < GRID_W && pos.y >= 0 && pos.y < GRID_H) {
+            document.getElementById('coordinates').innerHTML = `📍 X: ${pos.x}, Y: ${pos.y}`;
+        }
+    }
+    
+    function onPanStartPC(e) {
+        if(e.button !== 2) return;
+        e.preventDefault();
+        isPanning = true;
+        panStart = { x: e.clientX, y: e.clientY };
+        panStartTX = tx;
+        panStartTY = ty;
+        document.body.style.cursor = 'grabbing';
+        hideConfirmPanel();
+    }
+    
+    function onPanMovePC(e) {
+        if(!isPanning) return;
+        e.preventDefault();
+        tx = panStartTX + (e.clientX - panStart.x);
+        ty = panStartTY + (e.clientY - panStart.y);
+        updateTransform();
+    }
+    
+    function onPanEndPC() { isPanning = false; document.body.style.cursor = ''; }
+    
+    function onWheel(e) {
+        e.preventDefault();
+        let ns = scale + (e.deltaY > 0 ? -0.1 : 0.1);
+        ns = Math.min(Math.max(0.3, ns), 4);
+        if(ns !== scale) {
+            const rect = wrapper.getBoundingClientRect();
+            const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+            const cx = (mx - tx) / scale, cy = (my - ty) / scale;
+            scale = ns;
+            tx = mx - cx * scale;
+            ty = my - cy * scale;
+            updateTransform();
+            hideConfirmPanel();
+        }
+    }
+    
+    function updateModeUI() {
+        const status = document.getElementById('modeStatus');
+        const btn = document.getElementById('pipetteBtn');
+        if(pipetteMode) {
+            status.innerHTML = "💧 ПИПЕТКА";
+            btn.classList.add('active');
+        } else {
+            status.innerHTML = `🎨 КИСТЬ [${currentColor}]`;
+            btn.classList.remove('active');
+        }
+    }
+    
+    function showTempMessage(text, isError) {
+        const label = document.getElementById('cooldownLabel');
+        const original = label.innerHTML;
+        label.innerHTML = text;
+        setTimeout(() => { if(label.innerHTML === text) label.innerHTML = original; }, 1500);
+    }
+    
+    let isDraggingChat = false;
+    let chatDragStartX = 0, chatDragStartY = 0;
+    let chatStartLeft = 0, chatStartTop = 0;
+    
+    function makeChatDraggable() {
+        const panel = document.getElementById('chatPanel');
+        const header = document.getElementById('chatHeader');
+        header.addEventListener('mousedown', (e) => {
+            if(e.target.classList.contains('chat-close')) return;
+            e.preventDefault();
+            isDraggingChat = true;
+            const rect = panel.getBoundingClientRect();
+            chatDragStartX = e.clientX - rect.left;
+            chatDragStartY = e.clientY - rect.top;
+            chatStartLeft = rect.left;
+            chatStartTop = rect.top;
+            panel.style.transition = 'none';
+        });
+        header.addEventListener('touchstart', (e) => {
+            if(e.target.classList.contains('chat-close')) return;
+            if(e.touches.length === 1) {
+                e.preventDefault();
+                isDraggingChat = true;
+                const rect = panel.getBoundingClientRect();
+                chatDragStartX = e.touches[0].clientX - rect.left;
+                chatDragStartY = e.touches[0].clientY - rect.top;
+                chatStartLeft = rect.left;
+                chatStartTop = rect.top;
+                panel.style.transition = 'none';
+            }
+        });
+        window.addEventListener('mousemove', (e) => {
+            if(!isDraggingChat) return;
+            e.preventDefault();
+            let newLeft = e.clientX - chatDragStartX;
+            let newTop = e.clientY - chatDragStartY;
+            newLeft = Math.min(Math.max(0, newLeft), window.innerWidth - panel.offsetWidth);
+            newTop = Math.min(Math.max(0, newTop), window.innerHeight - panel.offsetHeight);
+            panel.style.left = newLeft + 'px';
+            panel.style.top = newTop + 'px';
+            panel.style.bottom = 'auto';
+            panel.style.right = 'auto';
+        });
+        window.addEventListener('touchmove', (e) => {
+            if(!isDraggingChat || e.touches.length !== 1) return;
+            e.preventDefault();
+            let newLeft = e.touches[0].clientX - chatDragStartX;
+            let newTop = e.touches[0].clientY - chatDragStartY;
+            newLeft = Math.min(Math.max(0, newLeft), window.innerWidth - panel.offsetWidth);
+            newTop = Math.min(Math.max(0, newTop), window.innerHeight - panel.offsetHeight);
+            panel.style.left = newLeft + 'px';
+            panel.style.top = newTop + 'px';
+            panel.style.bottom = 'auto';
+            panel.style.right = 'auto';
+        });
+        window.addEventListener('mouseup', () => { isDraggingChat = false; panel.style.transition = ''; });
+        window.addEventListener('touchend', () => { isDraggingChat = false; panel.style.transition = ''; });
+    }
+    
+    async function initGame() {
+        document.getElementById('canvasWrapper').style.display = 'block';
+        document.getElementById('toolbar').style.display = 'flex';
+        document.getElementById('userPanel').style.display = 'flex';
+        document.getElementById('leftButtons').style.display = 'flex';
+        document.getElementById('userInfo').innerHTML = `👤 ${currentLogin} (${currentPixelCount})`;
+        await loadBans();
+        await loadPauseState();
+        await loadPlayerStyles();
+        await loadUserProfiles();
+        listenChat();
+        startChatCleanup();
+        
+        if(currentLogin === 'Motya32' || currentLogin === 'motya42') {
+            isAdminMode = true;
+            const adminPanel = document.getElementById('adminPanel');
+            const adminStyleBtn = document.getElementById('adminStyleBtn');
+            if(adminPanel) adminPanel.classList.add('show');
+            if(adminStyleBtn) adminStyleBtn.style.display = 'flex';
+            
+            document.getElementById('adminNoCooldownBtn').onclick = () => {
+                if(!isAdminMode) return;
+                adminNoCooldown = !adminNoCooldown;
+                adminNoConfirm = adminNoCooldown;
+                document.getElementById('adminNoCooldownBtn').textContent = adminNoCooldown ? '⚡ БЕЗ КД (ВКЛ)' : '⚡ БЕЗ КД (ВЫКЛ)';
+                updateProgressBar();
+                showTempMessage(adminNoCooldown ? '⚡ Кулдаун и подтверждение ОТКЛЮЧЕНЫ' : '⏰ Кулдаун и подтверждение ВКЛЮЧЕНЫ', false);
+            };
+            document.getElementById('adminPauseBtn').onclick = async () => {
+                if(!isAdminMode) return;
+                await setPauseState(!isGamePaused);
+                showTempMessage(isGamePaused ? '⏸️ Игра на паузе' : '▶️ Игра продолжена', false);
+            };
+            const styleBtn = document.getElementById('adminStyleBtn');
+            const stylePanel = document.getElementById('stylePanel');
+            const styleClose = document.getElementById('styleClose');
+            styleBtn.onclick = async () => {
+                await updateStylePanel();
+                stylePanel.classList.toggle('show');
+            };
+            styleClose.onclick = () => stylePanel.classList.remove('show');
+        }
+        
+        centerCanvas();
+        updateModeUI();
+        renderCanvas();
+        updateTopList();
+        setInterval(() => updateTopList(), 10000);
+        
+        if(isMobile) {
+            const ring = document.getElementById('cooldownRing');
+            ring.style.position = 'fixed';
+            ring.style.bottom = '120px';
+            ring.style.left = '50%';
+            ring.style.transform = 'translateX(-50%)';
+            ring.style.top = 'auto';
+        }
+        
+        window.addEventListener('mousemove', (e) => {
+            if(!isMobile && ringEnabled) {
+                const ring = document.getElementById('cooldownRing');
+                ring.style.left = e.clientX + 'px';
+                ring.style.top = e.clientY + 'px';
+            }
+        });
+        
+        await loadPixelsOptimized();
+        listenChangesOptimized();
+        console.log('🎮 Игра запущена! Пользователь:', currentLogin);
+    }
+    
+    const themeBtn = document.getElementById('themeBtnFixed');
+    const soundToggleBtn = document.getElementById('soundToggleBtnFixed');
+    const logoutBtn = document.getElementById('logoutBtn');
+    const ringToggleBtn = document.getElementById('ringToggleBtn');
+    const pipetteBtn = document.getElementById('pipetteBtn');
+    const toggleGridBtn = document.getElementById('toggleGridBtn');
+    const colorPicker = document.getElementById('colorPicker');
+    const screenshotBtn = document.getElementById('screenshotBtn');
+    const confirmBtn = document.getElementById('confirmBtn');
+    const cancelBtn = document.getElementById('cancelBtn');
+    const topBtn = document.getElementById('topBtn');
+    const topPanel = document.getElementById('topPanel');
+    const topClose = document.getElementById('topClose');
+    const chatBtn = document.getElementById('chatBtn');
+    const chatPanel = document.getElementById('chatPanel');
+    const chatClose = document.getElementById('chatClose');
+    const chatSendBtn = document.getElementById('chatSendBtn');
+    const chatInput = document.getElementById('chatInput');
+    const profilePanel = document.getElementById('profilePanel');
+    const profileClose = document.getElementById('profileClose');
+    
+    themeBtn.onclick = () => {
+        isDarkTheme = !isDarkTheme;
+        document.body.classList.toggle('light', !isDarkTheme);
+        themeBtn.innerHTML = isDarkTheme ? '🌙' : '☀️';
+    };
+    soundToggleBtn.onclick = () => {
+        soundEnabled = !soundEnabled;
+        soundToggleBtn.innerHTML = soundEnabled ? '🔊' : '🔇';
+    };
+    logoutBtn.onclick = async () => {
+        localStorage.removeItem(CACHE_KEY);
+        localStorage.removeItem(CACHE_TIME_KEY);
+        await auth.signOut();
+        location.reload();
+    };
+    ringToggleBtn.onclick = () => {
+        ringEnabled = !ringEnabled;
+        ringToggleBtn.innerHTML = ringEnabled ? '⭕ КРУГ ВКЛ' : '⭕ КРУГ ВЫКЛ';
+        if(!ringEnabled) document.getElementById('cooldownRing').style.display = 'none';
+    };
+    pipetteBtn.onclick = () => { pipetteMode = !pipetteMode; updateModeUI(); hideConfirmPanel(); };
+    toggleGridBtn.onclick = () => { showGrid = !showGrid; renderCanvas(); };
+    colorPicker.addEventListener('input', e => { currentColor = e.target.value; if(pipetteMode) { pipetteMode = false; updateModeUI(); } });
+    screenshotBtn.onclick = () => {
+        const tempCanvas = document.createElement('canvas');
+        tempCanvas.width = canvas.width;
+        tempCanvas.height = canvas.height;
+        const tempCtx = tempCanvas.getContext('2d');
+        for(let y=0; y<GRID_H; y++) for(let x=0; x<GRID_W; x++) tempCtx.fillStyle = pixels[y][x], tempCtx.fillRect(x*CELL_SIZE, y*CELL_SIZE, CELL_SIZE, CELL_SIZE);
+        const link = document.createElement('a');
+        link.download = `pixel-battle-${new Date().toISOString().slice(0,19)}.png`;
+        link.href = tempCanvas.toDataURL();
+        link.click();
+    };
+    confirmBtn.onclick = confirmPlacePixel;
+    cancelBtn.onclick = hideConfirmPanel;
+    topBtn.onclick = () => { topPanel.classList.toggle('show'); updateTopList(); };
+    topClose.onclick = () => topPanel.classList.remove('show');
+    chatBtn.onclick = () => { chatPanel.classList.toggle('show'); };
+    chatClose.onclick = () => { chatPanel.classList.remove('show'); };
+    chatSendBtn.onclick = sendChatMessage;
+    chatInput.addEventListener('keypress', (e) => { if(e.key === 'Enter') sendChatMessage(); });
+    profileClose.onclick = () => profilePanel.classList.remove('show');
+    makeChatDraggable();
+    
+    const paletteColors = ['#000000','#ffffff','#ff0000','#00ff00','#0000ff','#ffff00','#ff00ff','#00ffff','#ff8800','#8800ff','#ff4488','#44ff88','#8844ff','#ff8844','#4488ff','#888888','#aa4444','#44aa44','#4444aa','#aaaa44','#aa44aa','#44aaaa','#ffaa44','#44ffaa'];
+    const paletteContainer = document.getElementById('colorPalette');
+    paletteContainer.innerHTML = '<span>🎨</span>';
+    paletteColors.forEach(color => {
+        const div = document.createElement('div');
+        div.className = 'palette-color';
+        div.style.backgroundColor = color;
+        div.onclick = () => { currentColor = color; colorPicker.value = color; if(pipetteMode) { pipetteMode = false; updateModeUI(); } };
+        paletteContainer.appendChild(div);
+    });
+    
+    canvas.addEventListener('mousedown', onMouseDown);
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', () => {});
+    window.addEventListener('mousedown', onPanStartPC);
+    window.addEventListener('mousemove', onPanMovePC);
+    window.addEventListener('mouseup', onPanEndPC);
+    canvas.addEventListener('wheel', onWheel, { passive: false });
+    canvas.addEventListener('touchstart', onTouchStart, { passive: false });
+    canvas.addEventListener('touchmove', onTouchMove, { passive: false });
+    canvas.addEventListener('touchend', onTouchEnd);
+    canvas.addEventListener('touchcancel', onTouchEnd);
+    window.addEventListener('contextmenu', e => { if(e.button === 2) e.preventDefault(); });
+    window.addEventListener('resize', centerCanvas);
+    
+    if(auth) {
+        auth.onAuthStateChanged(async (user) => {
+            if(user) {
+                const userDoc = await db.collection('users').doc(user.uid).get();
+                if(userDoc.exists) {
+                    currentLogin = userDoc.data().login;
+                    currentPixelCount = userDoc.data().pixels || 0;
+                }
+                currentUser = user;
+                initGame();
+            } else {
+                showAuthModal();
+            }
+        });
+    } else {
+        showAuthModal();
+    }
+</script>
+</body>
+</html>
