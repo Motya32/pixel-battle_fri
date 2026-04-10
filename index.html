@@ -1177,37 +1177,37 @@
         });
         
         // Кнопки сохранения в режиме редактирования
-        document.querySelectorAll('.save-btn').forEach(btn => {
-            btn.onclick = async (e) => {
-                const login = btn.dataset.login;
-                const gradient = document.querySelector(`.edit-gradient[data-login="${login}"]`).value;
-                const emoji = document.querySelector(`.edit-emoji[data-login="${login}"]`).value;
-                const bg = document.querySelector(`.edit-bg[data-login="${login}"]`).value;
-                const border = document.querySelector(`.edit-border[data-login="${login}"]`).value;
-                const rainbowBtn = document.querySelector(`.edit-rainbow[data-login="${login}"]`);
-                const rainbow = rainbowBtn.classList.contains('active');
-                
-                const styleData = {};
-                if(gradient !== 'None') styleData.gradient = gradient;
-                if(emoji !== 'None') styleData.emoji = emoji;
-                if(bg !== 'None') styleData.bg = bg;
-                if(border !== 'None') styleData.border = border;
-                styleData.rainbow = rainbow;
-                
-                await savePlayerStyle(login, styleData);
-                editModeForPlayer = null;
-                await updateStylePanel();
-                updateTopList();
-            };
-        });
+document.querySelectorAll('.save-btn').forEach(btn => {
+    btn.onclick = async (e) => {
+        const login = btn.dataset.login;
+        const gradient = document.querySelector(`.edit-gradient[data-login="${login}"]`).value;
+        const emoji = document.querySelector(`.edit-emoji[data-login="${login}"]`).value;
+        const bg = document.querySelector(`.edit-bg[data-login="${login}"]`).value;
+        const border = document.querySelector(`.edit-border[data-login="${login}"]`).value;
+        const rainbowBtn = document.querySelector(`.edit-rainbow[data-login="${login}"]`);
+        const rainbow = rainbowBtn.classList.contains('active');
         
-        // Кнопки отмены в режиме редактирования
-        document.querySelectorAll('.cancel-btn-style').forEach(btn => {
-            btn.onclick = async (e) => {
-                editModeForPlayer = null;
-                await updateStylePanel();
-            };
-        });
+        const styleData = {};
+        if(gradient !== 'None') styleData.gradient = gradient;
+        if(emoji !== 'None') styleData.emoji = emoji;
+        if(bg !== 'None') styleData.bg = bg;
+        if(border !== 'None') styleData.border = border;
+        styleData.rainbow = rainbow;
+        
+        await savePlayerStyle(login, styleData);
+        editModeForPlayer = null;
+        await updateStylePanel();  // Обновляем панель
+        updateTopList();           // Обновляем топ
+    };
+});
+
+// Кнопки отмены
+document.querySelectorAll('.cancel-btn-style').forEach(btn => {
+    btn.onclick = async (e) => {
+        editModeForPlayer = null;
+        await updateStylePanel();  // Просто закрываем режим редактирования
+    };
+});
         
         // Кнопки бана/разбана/удаления
         document.querySelectorAll('.ban-btn').forEach(btn => {
