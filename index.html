@@ -290,7 +290,7 @@
         body.light .profile-panel { background: rgba(230,240,255,0.98); }
         body.light .profile-bio-edit { background: #d0d8e8; color: #1a1a2e; }
         
-        /* Рамка для окна профиля */
+        /* Рамка для окна профиля — только рамка, не фон */
         .profile-panel.border-gold { border: 3px solid #ffd700; }
         .profile-panel.border-neon { border: 3px solid #00ff88; box-shadow: 0 0 10px #00ff88; }
         .profile-panel.border-acid { border: 3px solid #ccff00; box-shadow: 0 0 10px #ccff00; }
@@ -298,17 +298,16 @@
         .profile-panel.border-forest { border: 3px solid #228b22; }
         .profile-panel.border-rainbow { 
             border: 3px solid transparent;
-            background: linear-gradient(rgba(10,15,25,0.98), rgba(10,15,25,0.98)) padding-box,
-                        linear-gradient(90deg, red, orange, yellow, green, blue, indigo, violet) border-box;
             animation: border-rotate 3s linear infinite;
         }
-        body.light .profile-panel.border-rainbow {
-            background: linear-gradient(rgba(230,240,255,0.98), rgba(230,240,255,0.98)) padding-box,
-                        linear-gradient(90deg, red, orange, yellow, green, blue, indigo, violet) border-box;
-        }
         @keyframes border-rotate {
-            0% { filter: hue-rotate(0deg); }
-            100% { filter: hue-rotate(360deg); }
+            0% { border-color: red; }
+            16% { border-color: orange; }
+            33% { border-color: yellow; }
+            50% { border-color: green; }
+            66% { border-color: blue; }
+            83% { border-color: indigo; }
+            100% { border-color: violet; }
         }
         
         .user-panel { position: fixed; top: 15px; right: 15px; display: flex; flex-direction: column; align-items: flex-end; gap: 10px; z-index: 1001; }
@@ -538,7 +537,7 @@
     // ============================================
     // 👇👇👇 ВСТАВЬ СВОЙ КОНФИГ FIREBASE СЮДА 👇👇👇
     // ============================================
-const firebaseConfig = {
+    const firebaseConfig = {
     apiKey: "AIzaSyCGVYowGZuSYKilcrsoYubOQQpFWsjeAFo",
     authDomain: "pixelbattle-test.firebaseapp.com",
     projectId: "pixelbattle-test",
@@ -558,7 +557,6 @@ const firebaseConfig = {
         bgMusic = new Audio('music.mp3');
         bgMusic.loop = true;
         bgMusic.volume = 0.3;
-        // Автозапуск заблокирован браузером, запустим при первом клике
         const startMusic = () => {
             if(musicEnabled && bgMusic && bgMusic.paused) {
                 bgMusic.play().catch(e => console.log('Автозапуск музыки заблокирован'));
@@ -904,7 +902,7 @@ const firebaseConfig = {
         const panel = document.getElementById('profilePanel');
         const content = document.getElementById('profileContent');
         
-        // Применяем рамку к окну профиля
+        // Применяем рамку к окну профиля (только рамка)
         panel.classList.remove('border-gold', 'border-neon', 'border-acid', 'border-ocean', 'border-forest', 'border-rainbow');
         if(borderClass) {
             panel.classList.add(borderClass);
@@ -945,17 +943,34 @@ const firebaseConfig = {
         const container = document.getElementById('topList');
         if(!container) return;
         try {
-            const users = await db.collection('users').orderBy('pixels', 'desc').limit(20).get();
+            // Получаем всех пользователей, сортируем по пикселям
+            const users = await db.collection('users').orderBy('pixels', 'desc').get();
             if(users.empty) {
                 container.innerHTML = '<div style="text-align: center; padding: 20px;">Нет игроков</div>';
                 return;
             }
+            
+            // Фильтруем забаненных игроков
+            const topUsers = [];
+            for(const doc of users.docs) {
+                const login = doc.data().login;
+                const isBanned = await isUserBanned(login);
+                if(!isBanned) {
+                    topUsers.push({ login, data: doc.data() });
+                }
+            }
+            
+            if(topUsers.length === 0) {
+                container.innerHTML = '<div style="text-align: center; padding: 20px;">Нет игроков</div>';
+                return;
+            }
+            
             topListData = [];
             let html = '';
             let rank = 1;
-            for(const doc of users.docs) {
-                const data = doc.data();
-                const login = data.login;
+            for(const user of topUsers.slice(0, 20)) {
+                const login = user.login;
+                const data = user.data;
                 topListData.push(login);
                 const style = getPlayerStyle(login);
                 const emoji = style.emoji ? ` ${style.emoji}` : '';
@@ -987,6 +1002,7 @@ const firebaseConfig = {
             });
         } catch(e) {
             container.innerHTML = '<div style="text-align: center; padding: 20px;">Ошибка загрузки</div>';
+            console.error(e);
         }
     }
     
@@ -1902,7 +1918,6 @@ const firebaseConfig = {
     const profilePanel = document.getElementById('profilePanel');
     const profileClose = document.getElementById('profileClose');
     
-    // Кнопка звука управляет и звуками, и музыкой
     soundToggleBtn.onclick = () => {
         soundEnabled = !soundEnabled;
         soundToggleBtn.innerHTML = soundEnabled ? '🔊' : '🔇';
