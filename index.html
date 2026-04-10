@@ -290,6 +290,27 @@
         body.light .profile-panel { background: rgba(230,240,255,0.98); }
         body.light .profile-bio-edit { background: #d0d8e8; color: #1a1a2e; }
         
+        /* Рамка для окна профиля */
+        .profile-panel.border-gold { border: 3px solid #ffd700; }
+        .profile-panel.border-neon { border: 3px solid #00ff88; box-shadow: 0 0 10px #00ff88; }
+        .profile-panel.border-acid { border: 3px solid #ccff00; box-shadow: 0 0 10px #ccff00; }
+        .profile-panel.border-ocean { border: 3px solid #44aaff; }
+        .profile-panel.border-forest { border: 3px solid #228b22; }
+        .profile-panel.border-rainbow { 
+            border: 3px solid transparent;
+            background: linear-gradient(rgba(10,15,25,0.98), rgba(10,15,25,0.98)) padding-box,
+                        linear-gradient(90deg, red, orange, yellow, green, blue, indigo, violet) border-box;
+            animation: border-rotate 3s linear infinite;
+        }
+        body.light .profile-panel.border-rainbow {
+            background: linear-gradient(rgba(230,240,255,0.98), rgba(230,240,255,0.98)) padding-box,
+                        linear-gradient(90deg, red, orange, yellow, green, blue, indigo, violet) border-box;
+        }
+        @keyframes border-rotate {
+            0% { filter: hue-rotate(0deg); }
+            100% { filter: hue-rotate(360deg); }
+        }
+        
         .user-panel { position: fixed; top: 15px; right: 15px; display: flex; flex-direction: column; align-items: flex-end; gap: 10px; z-index: 1001; }
         .user-info { background: rgba(0,0,0,0.6); backdrop-filter: blur(8px); padding: 8px 15px; border-radius: 40px; color: #ffaa88; font-size: 0.85rem; font-weight: bold; display: flex; align-items: center; gap: 8px; }
         .circle-btn { width: 40px; height: 40px; border-radius: 50%; background: rgba(0,0,0,0.6); backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,0.2); font-size: 1.3rem; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.1s; }
@@ -527,6 +548,42 @@ const firebaseConfig = {
     measurementId: "G-2EKL48RDF3"
   };
     // ============================================
+    
+    // ========== МУЗЫКА ==========
+    let bgMusic = null;
+    let musicEnabled = true;
+    
+    function initMusic() {
+        if(bgMusic) return;
+        bgMusic = new Audio('music.mp3');
+        bgMusic.loop = true;
+        bgMusic.volume = 0.3;
+        // Автозапуск заблокирован браузером, запустим при первом клике
+        const startMusic = () => {
+            if(musicEnabled && bgMusic && bgMusic.paused) {
+                bgMusic.play().catch(e => console.log('Автозапуск музыки заблокирован'));
+            }
+            document.removeEventListener('click', startMusic);
+            canvas.removeEventListener('click', startMusic);
+        };
+        document.addEventListener('click', startMusic);
+        canvas.addEventListener('click', startMusic);
+    }
+    
+    function toggleMusic() {
+        if(!bgMusic) {
+            initMusic();
+            setTimeout(() => toggleMusic(), 100);
+            return;
+        }
+        if(musicEnabled) {
+            bgMusic.pause();
+            musicEnabled = false;
+        } else {
+            bgMusic.play().catch(e => console.log('Не удалось запустить музыку'));
+            musicEnabled = true;
+        }
+    }
     
     let db, auth;
     let currentUser = null;
@@ -830,6 +887,7 @@ const firebaseConfig = {
         const style = getPlayerStyle(login);
         const emoji = style.emoji ? ` ${style.emoji}` : '';
         const gradientClass = getGradientClass(style.gradient);
+        const borderClass = getBorderClass(style.border);
         const isBanned = await isUserBanned(login);
         const profile = userProfiles[login] || { bio: '' };
         
@@ -841,23 +899,31 @@ const firebaseConfig = {
         }
         
         const isOwnProfile = (currentLogin === login);
+        const canEdit = !isBanned && isOwnProfile;
         
         const panel = document.getElementById('profilePanel');
         const content = document.getElementById('profileContent');
+        
+        // Применяем рамку к окну профиля
+        panel.classList.remove('border-gold', 'border-neon', 'border-acid', 'border-ocean', 'border-forest', 'border-rainbow');
+        if(borderClass) {
+            panel.classList.add(borderClass);
+        }
+        
         content.innerHTML = `
             <div class="profile-rank">📍 Место в топе: #${rank !== null ? rank : '?'}</div>
             <div class="profile-name">${nameHtml}</div>
             <div class="profile-pixels">🎨 Пикселей: ${pixels}</div>
             ${isBanned ? '<div class="profile-banned">🚫 Забанен</div>' : ''}
             <div class="profile-bio" id="profileBioDisplay">${profile.bio || 'Нет описания'}</div>
-            ${isOwnProfile && !isBanned ? `
+            ${canEdit ? `
                 ${bioCooldown ? '<div class="profile-cooldown">⏳ Подождите 5 минут перед следующим изменением</div>' : ''}
                 <textarea id="profileBioEdit" class="profile-bio-edit" rows="3" maxlength="200" placeholder="Введите описание профиля (до 200 символов)..." ${bioCooldown ? 'disabled' : ''}>${profile.bio || ''}</textarea>
                 <button id="profileSaveBtn" class="profile-edit-btn" ${bioCooldown ? 'disabled' : ''}>💾 СОХРАНИТЬ</button>
             ` : ''}
         `;
         
-        if(isOwnProfile && !isBanned && !bioCooldown) {
+        if(canEdit && !bioCooldown) {
             document.getElementById('profileSaveBtn').onclick = async () => {
                 const newBio = document.getElementById('profileBioEdit').value.trim();
                 if(newBio.length > 200) return;
@@ -1749,6 +1815,7 @@ const firebaseConfig = {
         document.getElementById('userPanel').style.display = 'flex';
         document.getElementById('leftButtons').style.display = 'flex';
         document.getElementById('userInfo').innerHTML = `👤 ${currentLogin} (${currentPixelCount})`;
+        initMusic();
         await loadBans();
         await loadPauseState();
         await loadPlayerStyles();
@@ -1835,18 +1902,29 @@ const firebaseConfig = {
     const profilePanel = document.getElementById('profilePanel');
     const profileClose = document.getElementById('profileClose');
     
+    // Кнопка звука управляет и звуками, и музыкой
+    soundToggleBtn.onclick = () => {
+        soundEnabled = !soundEnabled;
+        soundToggleBtn.innerHTML = soundEnabled ? '🔊' : '🔇';
+        if(!soundEnabled && bgMusic) {
+            bgMusic.pause();
+        } else if(soundEnabled && bgMusic && bgMusic.paused && musicEnabled) {
+            bgMusic.play().catch(e => console.log('Не удалось запустить музыку'));
+        }
+    };
+    
     themeBtn.onclick = () => {
         isDarkTheme = !isDarkTheme;
         document.body.classList.toggle('light', !isDarkTheme);
         themeBtn.innerHTML = isDarkTheme ? '🌙' : '☀️';
     };
-    soundToggleBtn.onclick = () => {
-        soundEnabled = !soundEnabled;
-        soundToggleBtn.innerHTML = soundEnabled ? '🔊' : '🔇';
-    };
     logoutBtn.onclick = async () => {
         localStorage.removeItem(CACHE_KEY);
         localStorage.removeItem(CACHE_TIME_KEY);
+        if(bgMusic) {
+            bgMusic.pause();
+            bgMusic = null;
+        }
         await auth.signOut();
         location.reload();
     };
