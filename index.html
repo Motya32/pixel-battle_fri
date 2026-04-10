@@ -111,7 +111,6 @@
         .style-player-header:hover { background: rgba(255,255,255,0.05); }
         .style-player-name { font-weight: bold; color: #ffaa88; font-size: 0.85rem; }
         .style-toggle { background: none; border: none; color: #ffaa88; font-size: 0.8rem; cursor: pointer; padding: 0 5px; box-shadow: none; }
-        .style-edit-btn { background: #4a6a4f; padding: 4px 8px; font-size: 0.65rem; margin-left: 8px; }
         .style-player-content {
             display: none;
             margin-top: 10px;
@@ -148,8 +147,6 @@
         .ban-btn { background: #8b3a3a; padding: 4px 10px; font-size: 0.65rem; box-shadow: 0 2px 0 #4a1a1a; }
         .unban-btn { background: #2c6a2f; padding: 4px 10px; font-size: 0.65rem; box-shadow: 0 2px 0 #1a4a1a; }
         .delete-btn { background: #6a2c2c; padding: 4px 10px; font-size: 0.65rem; box-shadow: 0 2px 0 #3a1a1a; }
-        .save-btn { background: #2c6a2f; padding: 4px 10px; font-size: 0.65rem; box-shadow: 0 2px 0 #1a4a1a; }
-        .cancel-btn-style { background: #6a2c2c; padding: 4px 10px; font-size: 0.65rem; box-shadow: 0 2px 0 #3a1a1a; }
         body.light .style-select { background: #d0d8e8; color: #1a1a2e; }
         body.light .rainbow-checkbox { background: #d0d8e8; color: #1a1a2e; }
         body.light .rainbow-checkbox.active { background: #8b3a3a; color: white; }
@@ -818,10 +815,12 @@
     
     async function deleteUser(login, uid) {
         if(!db) return;
+        // Удаляем из всех коллекций
         await db.collection('users').doc(uid).delete();
         await db.collection('playerStyles').doc(login).delete();
         await db.collection('userProfiles').doc(login).delete();
         await db.collection('bans').doc(login).delete();
+        // Удаляем из Authentication
         const user = await auth.getUser(uid);
         if(user) await auth.deleteUser(uid);
         updateTopList();
@@ -1019,10 +1018,6 @@
         }
     }
     
-    // Хранилище для временных стилей при редактировании
-    let editModeForPlayer = null;
-    let tempStyles = null;
-    
     async function updateStylePanel() {
         if(!db) return;
         const container = document.getElementById('styleList');
@@ -1037,114 +1032,90 @@
             const login = doc.data().login;
             const uid = doc.id;
             const style = getPlayerStyle(login);
+            const rainbowChecked = style.rainbow ? 'active' : '';
+            const rainbowMark = style.rainbow ? '✅' : '☐';
             const isBanned = await isUserBanned(login);
             const contentId = `player-content-${login.replace(/[^a-zA-Z0-9]/g, '_')}`;
-            const editId = `edit-mode-${login.replace(/[^a-zA-Z0-9]/g, '_')}`;
-            const isEditing = (editModeForPlayer === login);
             html += `
                 <div class="style-player" data-login="${login}" data-uid="${uid}">
                     <div class="style-player-header" data-content="${contentId}">
                         <div class="style-player-name">${login} (${doc.data().pixels || 0})</div>
-                        <div>
-                            <button class="style-toggle">▼</button>
-                            ${!isEditing ? `<button class="style-edit-btn" data-login="${login}">✏️ РЕДАКТИРОВАТЬ</button>` : ''}
-                        </div>
+                        <button class="style-toggle">▼</button>
                     </div>
                     <div class="style-player-content" id="${contentId}">
-                        ${isEditing ? `
-                            <div id="${editId}" class="edit-container">
-                                <div class="style-row">
-                                    <select class="style-select edit-gradient" data-login="${login}">
-                                        <option value="None" ${!style.gradient ? 'selected' : ''}>None</option>
-                                        <option value="Бело-синий" ${style.gradient === 'Бело-синий' ? 'selected' : ''}>Бело-синий</option>
-                                        <option value="Золотой" ${style.gradient === 'Золотой' ? 'selected' : ''}>Золотой</option>
-                                        <option value="Розовый" ${style.gradient === 'Розовый' ? 'selected' : ''}>Розовый</option>
-                                        <option value="Зелёный" ${style.gradient === 'Зелёный' ? 'selected' : ''}>Зелёный</option>
-                                        <option value="Фиолетовый" ${style.gradient === 'Фиолетовый' ? 'selected' : ''}>Фиолетовый</option>
-                                        <option value="Огненный" ${style.gradient === 'Огненный' ? 'selected' : ''}>Огненный</option>
-                                        <option value="Изумрудный" ${style.gradient === 'Изумрудный' ? 'selected' : ''}>Изумрудный</option>
-                                        <option value="Лавандовый" ${style.gradient === 'Лавандовый' ? 'selected' : ''}>Лавандовый</option>
-                                        <option value="Мятный" ${style.gradient === 'Мятный' ? 'selected' : ''}>Мятный</option>
-                                        <option value="Коралловый" ${style.gradient === 'Коралловый' ? 'selected' : ''}>Коралловый</option>
-                                        <option value="Неоновый" ${style.gradient === 'Неоновый' ? 'selected' : ''}>Неоновый</option>
-                                        <option value="Кислотный" ${style.gradient === 'Кислотный' ? 'selected' : ''}>Кислотный</option>
-                                    </select>
-                                    <select class="style-select edit-emoji" data-login="${login}">
-                                        <option value="None" ${!style.emoji ? 'selected' : ''}>None</option>
-                                        <option value="⭐" ${style.emoji === '⭐' ? 'selected' : ''}>⭐</option>
-                                        <option value="🔥" ${style.emoji === '🔥' ? 'selected' : ''}>🔥</option>
-                                        <option value="💎" ${style.emoji === '💎' ? 'selected' : ''}>💎</option>
-                                        <option value="🎨" ${style.emoji === '🎨' ? 'selected' : ''}>🎨</option>
-                                        <option value="🏆" ${style.emoji === '🏆' ? 'selected' : ''}>🏆</option>
-                                        <option value="💸" ${style.emoji === '💸' ? 'selected' : ''}>💸</option>
-                                        <option value="🛠️" ${style.emoji === '🛠️' ? 'selected' : ''}>🛠️</option>
-                                        <option value="😎" ${style.emoji === '😎' ? 'selected' : ''}>😎</option>
-                                        <option value="👑" ${style.emoji === '👑' ? 'selected' : ''}>👑</option>
-                                        <option value="🤖" ${style.emoji === '🤖' ? 'selected' : ''}>🤖</option>
-                                        <option value="👾" ${style.emoji === '👾' ? 'selected' : ''}>👾</option>
-                                        <option value="💀" ${style.emoji === '💀' ? 'selected' : ''}>💀</option>
-                                        <option value="❤️" ${style.emoji === '❤️' ? 'selected' : ''}>❤️</option>
-                                        <option value="💙" ${style.emoji === '💙' ? 'selected' : ''}>💙</option>
-                                        <option value="💚" ${style.emoji === '💚' ? 'selected' : ''}>💚</option>
-                                        <option value="💛" ${style.emoji === '💛' ? 'selected' : ''}>💛</option>
-                                    </select>
-                                </div>
-                                <div class="style-row">
-                                    <select class="style-select edit-bg" data-login="${login}">
-                                        <option value="None" ${!style.bg ? 'selected' : ''}>None</option>
-                                        <option value="Золотая" ${style.bg === 'Золотая' ? 'selected' : ''}>Золотая</option>
-                                        <option value="Серебряная" ${style.bg === 'Серебряная' ? 'selected' : ''}>Серебряная</option>
-                                        <option value="Бронзовая" ${style.bg === 'Бронзовая' ? 'selected' : ''}>Бронзовая</option>
-                                        <option value="Неоновая" ${style.bg === 'Неоновая' ? 'selected' : ''}>Неоновая</option>
-                                        <option value="Кислотная" ${style.bg === 'Кислотная' ? 'selected' : ''}>Кислотная</option>
-                                        <option value="Лесная" ${style.bg === 'Лесная' ? 'selected' : ''}>Лесная</option>
-                                        <option value="Океанская" ${style.bg === 'Океанская' ? 'selected' : ''}>Океанская</option>
-                                    </select>
-                                    <select class="style-select edit-border" data-login="${login}">
-                                        <option value="None" ${!style.border ? 'selected' : ''}>None</option>
-                                        <option value="Золотая" ${style.border === 'Золотая' ? 'selected' : ''}>Золотая</option>
-                                        <option value="Неоновая" ${style.border === 'Неоновая' ? 'selected' : ''}>Неоновая</option>
-                                        <option value="Кислотная" ${style.border === 'Кислотная' ? 'selected' : ''}>Кислотная</option>
-                                        <option value="Океанская" ${style.border === 'Океанская' ? 'selected' : ''}>Океанская</option>
-                                        <option value="Лесная" ${style.border === 'Лесная' ? 'selected' : ''}>Лесная</option>
-                                        <option value="Радужная" ${style.border === 'Радужная' ? 'selected' : ''}>Радужная</option>
-                                    </select>
-                                    <button class="rainbow-checkbox edit-rainbow ${style.rainbow ? 'active' : ''}" data-login="${login}" data-rainbow="${style.rainbow}">🌈 ${style.rainbow ? '✅' : '☐'}</button>
-                                </div>
-                                <div class="style-row">
-                                    <button class="save-btn" data-login="${login}">💾 СОХРАНИТЬ</button>
-                                    <button class="cancel-btn-style" data-login="${login}">❌ ОТМЕНА</button>
-                                </div>
-                            </div>
-                        ` : `
-                            <div class="style-row">
-                                <span>Градиент: ${style.gradient || 'None'}</span>
-                                <span>Смайлик: ${style.emoji || 'None'}</span>
-                                <span>Фон: ${style.bg || 'None'}</span>
-                                <span>Рамка: ${style.border || 'None'}</span>
-                                <span>Радуга: ${style.rainbow ? '✅' : '❌'}</span>
-                            </div>
-                            <div class="style-row">
-                                ${isBanned ? 
-                                    `<button class="unban-btn" data-login="${login}">✅ РАЗБАН</button>` : 
-                                    `<button class="ban-btn" data-login="${login}">🔨 БАН</button>`
-                                }
-                                <button class="delete-btn" data-login="${login}" data-uid="${uid}">🗑️ УДАЛИТЬ</button>
-                            </div>
-                        `}
+                        <div class="style-row">
+                            <select class="style-select gradient-select" data-login="${login}">
+                                <option value="None" ${!style.gradient ? 'selected' : ''}>None</option>
+                                <option value="Бело-синий" ${style.gradient === 'Бело-синий' ? 'selected' : ''}>Бело-синий</option>
+                                <option value="Золотой" ${style.gradient === 'Золотой' ? 'selected' : ''}>Золотой</option>
+                                <option value="Розовый" ${style.gradient === 'Розовый' ? 'selected' : ''}>Розовый</option>
+                                <option value="Зелёный" ${style.gradient === 'Зелёный' ? 'selected' : ''}>Зелёный</option>
+                                <option value="Фиолетовый" ${style.gradient === 'Фиолетовый' ? 'selected' : ''}>Фиолетовый</option>
+                                <option value="Огненный" ${style.gradient === 'Огненный' ? 'selected' : ''}>Огненный</option>
+                                <option value="Изумрудный" ${style.gradient === 'Изумрудный' ? 'selected' : ''}>Изумрудный</option>
+                                <option value="Лавандовый" ${style.gradient === 'Лавандовый' ? 'selected' : ''}>Лавандовый</option>
+                                <option value="Мятный" ${style.gradient === 'Мятный' ? 'selected' : ''}>Мятный</option>
+                                <option value="Коралловый" ${style.gradient === 'Коралловый' ? 'selected' : ''}>Коралловый</option>
+                                <option value="Неоновый" ${style.gradient === 'Неоновый' ? 'selected' : ''}>Неоновый</option>
+                                <option value="Кислотный" ${style.gradient === 'Кислотный' ? 'selected' : ''}>Кислотный</option>
+                            </select>
+                            <select class="style-select emoji-select" data-login="${login}">
+                                <option value="None" ${!style.emoji ? 'selected' : ''}>None</option>
+                                <option value="⭐" ${style.emoji === '⭐' ? 'selected' : ''}>⭐</option>
+                                <option value="🔥" ${style.emoji === '🔥' ? 'selected' : ''}>🔥</option>
+                                <option value="💎" ${style.emoji === '💎' ? 'selected' : ''}>💎</option>
+                                <option value="🎨" ${style.emoji === '🎨' ? 'selected' : ''}>🎨</option>
+                                <option value="🏆" ${style.emoji === '🏆' ? 'selected' : ''}>🏆</option>
+                                <option value="💸" ${style.emoji === '💸' ? 'selected' : ''}>💸</option>
+                                <option value="🛠️" ${style.emoji === '🛠️' ? 'selected' : ''}>🛠️</option>
+                                <option value="😎" ${style.emoji === '😎' ? 'selected' : ''}>😎</option>
+                                <option value="👑" ${style.emoji === '👑' ? 'selected' : ''}>👑</option>
+                                <option value="🤖" ${style.emoji === '🤖' ? 'selected' : ''}>🤖</option>
+                                <option value="👾" ${style.emoji === '👾' ? 'selected' : ''}>👾</option>
+                                <option value="💀" ${style.emoji === '💀' ? 'selected' : ''}>💀</option>
+                                <option value="❤️" ${style.emoji === '❤️' ? 'selected' : ''}>❤️</option>
+                                <option value="💙" ${style.emoji === '💙' ? 'selected' : ''}>💙</option>
+                                <option value="💚" ${style.emoji === '💚' ? 'selected' : ''}>💚</option>
+                                <option value="💛" ${style.emoji === '💛' ? 'selected' : ''}>💛</option>
+                            </select>
+                            <select class="style-select bg-select" data-login="${login}">
+                                <option value="None" ${!style.bg ? 'selected' : ''}>None</option>
+                                <option value="Золотая" ${style.bg === 'Золотая' ? 'selected' : ''}>Золотая</option>
+                                <option value="Серебряная" ${style.bg === 'Серебряная' ? 'selected' : ''}>Серебряная</option>
+                                <option value="Бронзовая" ${style.bg === 'Бронзовая' ? 'selected' : ''}>Бронзовая</option>
+                                <option value="Неоновая" ${style.bg === 'Неоновая' ? 'selected' : ''}>Неоновая</option>
+                                <option value="Кислотная" ${style.bg === 'Кислотная' ? 'selected' : ''}>Кислотная</option>
+                                <option value="Лесная" ${style.bg === 'Лесная' ? 'selected' : ''}>Лесная</option>
+                                <option value="Океанская" ${style.bg === 'Океанская' ? 'selected' : ''}>Океанская</option>
+                            </select>
+                            <select class="style-select border-select" data-login="${login}">
+                                <option value="None" ${!style.border ? 'selected' : ''}>None</option>
+                                <option value="Золотая" ${style.border === 'Золотая' ? 'selected' : ''}>Золотая</option>
+                                <option value="Неоновая" ${style.border === 'Неоновая' ? 'selected' : ''}>Неоновая</option>
+                                <option value="Кислотная" ${style.border === 'Кислотная' ? 'selected' : ''}>Кислотная</option>
+                                <option value="Океанская" ${style.border === 'Океанская' ? 'selected' : ''}>Океанская</option>
+                                <option value="Лесная" ${style.border === 'Лесная' ? 'selected' : ''}>Лесная</option>
+                                <option value="Радужная" ${style.border === 'Радужная' ? 'selected' : ''}>Радужная</option>
+                            </select>
+                            <button class="rainbow-checkbox ${rainbowChecked}" data-login="${login}">🌈 ${rainbowMark}</button>
+                            ${isBanned ? 
+                                `<button class="unban-btn" data-login="${login}">✅ РАЗБАН</button>` : 
+                                `<button class="ban-btn" data-login="${login}">🔨 БАН</button>`
+                            }
+                            <button class="delete-btn" data-login="${login}" data-uid="${uid}">🗑️ УДАЛИТЬ</button>
+                        </div>
                     </div>
                 </div>
             `;
         }
         container.innerHTML = html;
         
-        // Обработчики для сворачивания
         document.querySelectorAll('.style-player-header').forEach(header => {
             const contentId = header.dataset.content;
             const content = document.getElementById(contentId);
             const toggleBtn = header.querySelector('.style-toggle');
             header.onclick = (e) => {
-                if(e.target === toggleBtn || e.target.classList.contains('style-edit-btn')) return;
+                if(e.target === toggleBtn) return;
                 if(content.classList.contains('show')) {
                     content.classList.remove('show');
                     toggleBtn.innerHTML = '▼';
@@ -1165,56 +1136,54 @@
             };
         });
         
-        // Кнопки редактирования
-        document.querySelectorAll('.style-edit-btn').forEach(btn => {
-            btn.onclick = async (e) => {
-                e.stopPropagation();
-                const login = btn.dataset.login;
-                editModeForPlayer = login;
-                await updateStylePanel();
-            };
-        });
-        
-        // Кнопки сохранения в режиме редактирования
-        document.querySelectorAll('.save-btn').forEach(btn => {
-            btn.onclick = async (e) => {
-                const login = btn.dataset.login;
-                const gradient = document.querySelector(`.edit-gradient[data-login="${login}"]`).value;
-                const emoji = document.querySelector(`.edit-emoji[data-login="${login}"]`).value;
-                const bg = document.querySelector(`.edit-bg[data-login="${login}"]`).value;
-                const border = document.querySelector(`.edit-border[data-login="${login}"]`).value;
-                const rainbowBtn = document.querySelector(`.edit-rainbow[data-login="${login}"]`);
-                const rainbow = rainbowBtn.classList.contains('active');
-                
-                const styleData = {};
-                if(gradient !== 'None') styleData.gradient = gradient;
-                if(emoji !== 'None') styleData.emoji = emoji;
-                if(bg !== 'None') styleData.bg = bg;
-                if(border !== 'None') styleData.border = border;
-                styleData.rainbow = rainbow;
-                
-                await savePlayerStyle(login, styleData);
-                editModeForPlayer = null;
-                await updateStylePanel();
+        document.querySelectorAll('.gradient-select').forEach(select => {
+            select.onchange = async (e) => {
+                const login = select.dataset.login;
+                const value = select.value === 'None' ? null : select.value;
+                await savePlayerStyle(login, { gradient: value });
                 updateTopList();
             };
         });
-        
-        // Кнопки отмены в режиме редактирования
-        document.querySelectorAll('.cancel-btn-style').forEach(btn => {
-            btn.onclick = async (e) => {
-                editModeForPlayer = null;
-                await updateStylePanel();
+        document.querySelectorAll('.emoji-select').forEach(select => {
+            select.onchange = async (e) => {
+                const login = select.dataset.login;
+                const value = select.value === 'None' ? null : select.value;
+                await savePlayerStyle(login, { emoji: value });
+                updateTopList();
             };
         });
-        
-        // Кнопки бана/разбана/удаления
+        document.querySelectorAll('.bg-select').forEach(select => {
+            select.onchange = async (e) => {
+                const login = select.dataset.login;
+                const value = select.value === 'None' ? null : select.value;
+                await savePlayerStyle(login, { bg: value, rainbow: false });
+                updateTopList();
+            };
+        });
+        document.querySelectorAll('.border-select').forEach(select => {
+            select.onchange = async (e) => {
+                const login = select.dataset.login;
+                const value = select.value === 'None' ? null : select.value;
+                await savePlayerStyle(login, { border: value });
+                updateTopList();
+            };
+        });
+        document.querySelectorAll('.rainbow-checkbox').forEach(btn => {
+            btn.onclick = async (e) => {
+                const login = btn.dataset.login;
+                const style = getPlayerStyle(login);
+                const newRainbow = !style.rainbow;
+                await savePlayerStyle(login, { rainbow: newRainbow, bg: newRainbow ? null : style.bg });
+                updateStylePanel();
+                updateTopList();
+            };
+        });
         document.querySelectorAll('.ban-btn').forEach(btn => {
             btn.onclick = async (e) => {
                 const login = btn.dataset.login;
                 if(confirm(`Забанить игрока ${login}?`)) {
                     await banUser(login);
-                    await updateStylePanel();
+                    updateStylePanel();
                     updateTopList();
                 }
             };
@@ -1223,7 +1192,7 @@
             btn.onclick = async (e) => {
                 const login = btn.dataset.login;
                 await unbanUser(login);
-                await updateStylePanel();
+                updateStylePanel();
                 updateTopList();
             };
         });
@@ -1233,7 +1202,7 @@
                 const uid = btn.dataset.uid;
                 if(confirm(`⚠️ ВНИМАНИЕ! Вы уверены, что хотите удалить игрока ${login}? Это действие НЕЛЬЗЯ отменить!`)) {
                     await deleteUser(login, uid);
-                    await updateStylePanel();
+                    updateStylePanel();
                     updateTopList();
                 }
             };
@@ -1323,6 +1292,7 @@
             if(!login || !password) { errorDiv.innerText = 'Заполните все поля'; return; }
             if(password.length < 4) { errorDiv.innerText = 'Пароль должен быть минимум 4 символа'; return; }
             
+            // Проверка лимита аккаунтов (максимум 30)
             const usersCount = await db.collection('users').get();
             if(usersCount.size >= 30) {
                 errorDiv.innerText = '⚠️ Достигнут лимит аккаунтов (30). Попробуйте позже';
